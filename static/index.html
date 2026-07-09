@@ -596,17 +596,110 @@ async function submitCheckin() {
 
 // ===== Scale =====
 async function scanScale() {
-  showModal('正在搜索小米秤...',
-    '<p style="text-align:center;padding:20px;color:var(--text-secondary)">站上秤激活它<br><small>超时：30秒</small></p>');
-  try {
-    const r = await fetch(API + '/api/scale/scan');
-    const data = await r.json();
-    // 至少展示 2.5 秒，避免一闪而过
-    await new Promise(resolve => setTimeout(resolve, 2500));
+  // Web Bluetooth — 手机 Chrome 直连小米秤，无需后端
+  if (!navigator.bluetooth) {
+    alert('蓝牙功能需要手机 Chrome 浏览器\n请在手机上用 Chrome 打开此页面');
+    return;
+  }
+
+  const UUID_BCS = '0000181b-0000-1000-8000-00805f9b34fb';
+
+  showModal('连接小米秤',
+    `<p style="text-align:center;padding:16px;color:var(--text-secondary)">
+      即将弹出蓝牙设备选择器<br><small>选择你的小米体脂秤</small>
+    </p>
+    <button class="btn btn-primary" style="width:100%" id="bluetooth-pair-btn">🔍 开始搜索</button>`);
+
+  document.getElementById('bluetooth-pair-btn').onclick = async () => {
+    let device;
+    try {
+      // Step 1: 用户从系统弹窗中选择秤
+      device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [UUID_BCS],
+      });
+    } catch (e) {
+      closeModal();
+      if (e.name !== 'NotFoundError') alert('蓝牙错误：' + (e.message || '设备选择失败'));
+      return;
+    }
+
+    // Update modal — searching
+    document.getElementById('modal-content').innerHTML = `
+      <button class="modal-close" onclick="closeScaleScan()">&times;</button>
+      <h3 style="margin-bottom:12px">正在搜索 ${device.name || '小米秤'}...</h3>
+      <p style="text-align:center;padding:20px;color:var(--text-secondary)">站上秤，保持站稳<br><small>等待读数稳定...</small></p>`;
+
+    const readings = [];
+    let _scanning = true;
+
+    try {
+      const server = await device.gatt.connect();
+      await device.watchAdvertisements();
+      device.addEventListener('advertisementreceived', (event) => {
+        if (!_scanning) return;
+        try {
+          const data = event.serviceData.get(UUID_BCS);
+          if (data) {
+            const w = _parseScaleWeight(data);
+            if (w) readings.push({ t: Date.now(), w });
+          }
+        } catch(_) {}
+      });
+
+      // Wait for stable reading (2.5s silence) or 30s timeout
+      await new Promise((resolve) => {
+        const deadline = Date.now() + 30000;
+        const check = setInterval(() => {
+          if (!_scanning) { clearInterval(check); resolve(); return; }
+          const last = readings.length ? readings[readings.length-1].t : 0;
+          if (readings.length > 0 && Date.now() - last > 2500) { clearInterval(check); resolve(); }
+          if (Date.now() > deadline) { clearInterval(check); resolve(); }
+        }, 600);
+      });
+
+      _scanning = false;
+      await device.gatt.disconnect();
+    } catch (e) {
+      _scanning = false;
+      closeModal();
+      alert('连接失败：' + (e.message || ''));
+      return;
+    }
+
     closeModal();
-    if (data.ok) { loadToday(); }
-    else { alert('未找到秤，站上去唤醒它'); }
-  } catch(e) { closeModal(); alert('连接失败'); }
+
+    if (readings.length === 0) {
+      alert('未检测到读数，请站稳再试');
+      return;
+    }
+
+    // Median of last 5
+    const recent = readings.slice(-5).map(r => r.w).sort((a,b) => a-b);
+    const weight = recent[Math.floor(recent.length / 2)];
+
+    await fetch(API + '/api/weight', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'weight=' + weight
+    });
+    loadToday();
+  };
+}
+
+function _parseScaleWeight(data) {
+  // data is a DataView from Web Bluetooth advertisement
+  if (data.byteLength < 10) return null;
+  const raw = data.getUint16(data.byteLength - 2, true); // LE
+  const w = raw * 0.005;
+  return (w > 20 && w < 250) ? Math.round(w * 10) / 10 : null;
+}
+
+function closeScaleScan() {
+  closeModal();
+  if (window._bleDevice) {
+    try { window._bleDevice.gatt.disconnect(); } catch(_) {}
+  }
 }
 
 function manualWeight() {
