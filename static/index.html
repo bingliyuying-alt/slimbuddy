@@ -342,16 +342,13 @@ header {
   <div class="modal-sheet" id="modal-content"></div>
 </div>
 
-<script src="/static/db.js"></script>
-<script src="/static/plan.js"></script>
 <script>
 // ===== State =====
+const API = '';
 let currentView = 'today';
-let todayData = null;
 
 // ===== Init =====
-document.addEventListener('DOMContentLoaded', async () => {
-  await DB.initDB();
+document.addEventListener('DOMContentLoaded', () => {
   setupNav();
   loadWeather();
   loadToday();
@@ -360,15 +357,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadWeather() {
   try {
-    const r = await fetch('https://wttr.in/Wuxi?format=%C+%t&lang=zh');
-    const raw = await r.text();
-    const text = raw.replace(/<[^>]+>/g, '').trim();
-    document.getElementById('weather-tag').textContent = text || '--';
+    const r = await fetch(API + '/api/weather');
+    const wd = await r.json(); document.getElementById('weather-tag').textContent = wd.weather;
   } catch(e) {
     document.getElementById('weather-tag').textContent = '--';
   }
 }
 
+// ===== Navigation =====
 function setupNav() {
   document.querySelectorAll('#bottom-nav .nav-item').forEach(item => {
     item.addEventListener('click', () => {
@@ -390,36 +386,33 @@ function switchView(view) {
 
 // ===== Today View =====
 async function loadToday() {
-  const today = new Date().toISOString().slice(0, 10);
-  const weight = await DB.getLatestWeight();
-  const checkins = await DB.getTodayCheckins(today);
-  const lastCheckin = await DB.getLastCheckinDate();
-  let gapDays = null;
-  if (lastCheckin && lastCheckin !== today) {
-    const last = new Date(lastCheckin);
-    gapDays = Math.floor((new Date() - last) / 86400000);
+  let data;
+  try {
+    const r = await fetch(API + '/api/today');
+    data = await r.json();
+    todayData = data;
+  } catch(e) {
+    document.getElementById('main-content').innerHTML = '<p style="text-align:center;padding:40px;color:var(--text-tertiary)">无法连接服务器. 服务器启动了吗？</p>';
+    return;
   }
 
-  const data = {
-    date: today,
-    weight: weight ? weight.weight_kg : null,
-    weight_id: weight ? weight.id : null,
-    checkins: checkins,
-    gap_days: gapDays,
-  };
-  todayData = data;
-
   const w = data.weight;
+  const trendHtml = w ? '' : '';
+
   let html = '';
 
+  // Gap banner
   if (data.gap_days && data.gap_days > 0) {
-    html += `<div class="gap-banner">
+    html += `
+    <div class="gap-banner">
       <p>嘿！ ${data.gap_days} 天没见了<br>完全没关系，最近怎么样？</p>
       <button class="btn btn-sm btn-ghost" onclick="recoverGap()">我回来了！</button>
     </div>`;
   }
 
-  html += `<div class="hero">
+  // Weight hero
+  html += `
+  <div class="hero">
     <div class="weight-ring">
       <div class="weight-value">${w ? w.toFixed(1) : '--'}<span class="weight-unit"> kg</span></div>
       ${w ? `<div class="weight-date">上次： ${data.date}</div>` : ''}
@@ -432,6 +425,7 @@ async function loadToday() {
     <div id="health-metrics" style="display:flex;justify-content:center;gap:16px;margin-top:8px;font-size:0.78em;color:var(--text-secondary)"></div>
   </div>`;
 
+  // Progress dots
   if (data.checkins && data.checkins.length > 0) {
     html += '<div class="progress">';
     ['breakfast','lunch','dinner','exercise'].forEach(t => {
@@ -441,6 +435,7 @@ async function loadToday() {
     html += '</div>';
   }
 
+  // Plan section
   if (w) {
     html += '<div class="section-label">今日计划</div>';
     html += '<div id="plan-area">加载中...</div>';
@@ -449,48 +444,38 @@ async function loadToday() {
   }
 
   document.getElementById('main-content').innerHTML = html;
+
+  // Load plan
   if (w) await loadPlan();
 }
 
 async function loadPlan() {
   const weather = document.getElementById('weather-tag').textContent;
-  const today = new Date().toISOString().slice(0, 10);
-
-  let plan = await DB.getTodayPlan(today);
-  const now = new Date();
-  if (plan && now.getHours() >= 4 && plan.plan_date < today) plan = null;
-
-  if (!plan) {
-    const latest = await DB.getLatestWeight();
-    const w = latest ? latest.weight_kg : null;
-    if (!w) { document.getElementById('plan-area').innerHTML = ''; return; }
-    const g = await PlanEngine.generateDailyPlan(today, weather, w);
-    await DB.saveTodayPlan(today,
-      JSON.stringify(g.breakfast), JSON.stringify(g.lunch),
-      JSON.stringify(g.dinner), JSON.stringify(g.exercise),
-      JSON.stringify({ motto: g.motto, schedule: g.schedule }));
-    plan = g;
-  } else {
-    plan = {
-      date: today,
-      breakfast: JSON.parse(plan.breakfast || 'null'),
-      lunch: JSON.parse(plan.lunch || 'null'),
-      dinner: JSON.parse(plan.dinner || 'null'),
-      exercise: JSON.parse(plan.exercise || 'null'),
-      extra: JSON.parse(plan.extra_notes || '{}'),
-      modified: !!plan.modified,
-    };
+  let plan;
+  try {
+    const r = await fetch(API + '/api/plan/today?weather=' + encodeURIComponent(weather));
+    plan = await r.json();
+  } catch(e) {
+    document.getElementById('plan-area').innerHTML = '<p style="color:var(--text-tertiary);text-align:center">无法加载计划</p>';
+    return;
   }
 
+  // No weight yet — skip plan rendering
+  if (plan.no_weight) {
+    document.getElementById('plan-area').innerHTML = '';
+    return;
+  }
+
+  // Motto
   let mel = document.querySelector('.motto');
   const mt = (plan.extra && plan.extra.motto) || '你可以的。';
   if (mel) mel.textContent = mt;
   else { mel = document.createElement('div'); mel.className = 'motto'; mel.textContent = mt; document.getElementById('plan-area').parentNode.insertBefore(mel, document.getElementById('plan-area')); }
 
   const meals = [
-    { key: 'breakfast', emoji: '🌅', cls: 'meal-bf' },
-    { key: 'lunch', emoji: '☀️', cls: 'meal-lu' },
-    { key: 'dinner', emoji: '🌙', cls: 'meal-di' },
+    {key:'breakfast',icon:'Sunrise',emoji:'🌅',cls:'meal-bf'},
+    {key:'lunch',icon:'Sun',emoji:'☀️',cls:'meal-lu'},
+    {key:'dinner',icon:'Moon',emoji:'🌙',cls:'meal-di'},
   ];
 
   let planHtml = '';
@@ -498,7 +483,8 @@ async function loadPlan() {
     const item = plan[m.key];
     if (!item) return;
     const isChecked = todayData && todayData.checkins && todayData.checkins.find(c => c.meal_type === m.key && c.completed);
-    planHtml += `<div class="meal ${m.cls} ${isChecked?'done':''}">
+    planHtml += `
+    <div class="meal ${m.cls} ${isChecked?'done':''}">
       <div class="meal-header">
         <span class="meal-icon">${m.emoji}</span>
         <div class="meal-info">
@@ -514,10 +500,12 @@ async function loadPlan() {
     </div>`;
   });
 
+  // Exercise
   const ex = plan.exercise;
   if (ex) {
     const exChecked = todayData && todayData.checkins && todayData.checkins.find(c => c.meal_type === 'exercise' && c.completed);
-    planHtml += `<div class="meal meal-ex ${exChecked?'done':''}">
+    planHtml += `
+    <div class="meal meal-ex ${exChecked?'done':''}">
       <div class="meal-header">
         <span class="meal-icon">🏃</span>
         <div class="meal-info">
@@ -533,25 +521,27 @@ async function loadPlan() {
     </div>`;
   }
 
+  // Total calories
   let totalCal = 0;
   ['breakfast','lunch','dinner'].forEach(k => { if (plan[k] && plan[k].calories) totalCal += plan[k].calories; });
   planHtml += `<div style="text-align:center;color:var(--gold);padding:8px;font-size:0.85em;font-weight:600">📊 今日约 ${totalCal || '?'} kcal</div>`;
+
+  // Add + button for custom items
   planHtml += `<div style="text-align:center;margin-top:8px"><button class="btn btn-sm ghost" onclick="addCustomItem()">➕ 添加</button></div>`;
   document.getElementById('plan-area').innerHTML = planHtml;
-
+  // Apply roast if just edited
   try {
     const rd = JSON.parse(localStorage.getItem('roast')||'null');
     if (rd && Date.now()-rd.t<10000) {
-      const mealIdx = {breakfast:0,lunch:1,dinner:2,exercise:3}[rd.type]||0;
-      const re = document.querySelectorAll('.meal-reason')[mealIdx];
+      const mealIdx2 = {breakfast:0,lunch:1,dinner:2,exercise:3}[rd.type]||0; const re = document.querySelectorAll('.meal-reason')[mealIdx2];
       if (re) re.textContent = '🤖 '+generateRoast(rd.n, rd.c);
       localStorage.removeItem('roast');
     }
   } catch(e) {}
-  loadHealthMetrics();
+  loadHealthMetrics(plan);
 }
 
-// ===== Check-in =====
+// ===== Check-in (with photo modal) =====
 let _checkinType = null;
 let _checkinPhotos = [];
 
@@ -560,11 +550,12 @@ function openCheckin(type) {
   _checkinPhotos = [];
   const labels = {breakfast:'早餐',lunch:'午餐',dinner:'晚餐',exercise:'运动'};
   const emojis = {breakfast:'🌅',lunch:'☀️',dinner:'🌙',exercise:'🏃'};
+  const isEx = type === 'exercise';
   showModal(emojis[type]+' '+labels[type]+' 打卡', `
     <textarea id="checkin-note" class="input" placeholder="写句话（可跳过）" rows="2" style="margin-bottom:12px"></textarea>
-    ${type==='exercise' ? '<input id="checkin-cal" class="input" type="number" placeholder="消耗卡路里 kcal" style="margin-bottom:12px">' : ''}
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="btn btn-sm ghost" onclick="pickPhoto(true)">📷 拍照</button><button class="btn btn-sm ghost" onclick="pickPhoto(false)">🖼️ 相册</button>
+    ${isEx ? '<input id="checkin-cal" class="input" type="number" placeholder="消耗卡路里 kcal" style="margin-bottom:12px">' : ''}
+    <div class="row" style="gap:8px;margin-bottom:12px">
+      <button class="btn btn-sm ghost" onclick="pickPhoto(true)">📷 拍照</button><button class="btn btn-sm ghost" onclick="pickPhoto(false)">🖼️ 相册（可多选）</button>
       <span id="photo-status" style="font-size:0.8em;color:var(--text-tertiary)"></span>
     </div>
     <button class="btn btn-green" style="width:100%" onclick="submitCheckin()">✅ 确认打卡</button>
@@ -577,7 +568,12 @@ function pickPhoto(fromCamera) {
   if (fromCamera) inp.capture = 'environment';
   if (!fromCamera) inp.multiple = true;
   inp.onchange = () => {
-    for (const f of inp.files) { if (_checkinPhotos.length < 9) _checkinPhotos.push(f); }
+    if (inp.files.length > 0) {
+      for (const f of inp.files) {
+        if (_checkinPhotos.length >= 9) break;
+        _checkinPhotos.push(f);
+      }
+    }
     const st = document.getElementById('photo-status');
     if (st) st.textContent = _checkinPhotos.length > 0 ? '📸 '+_checkinPhotos.length+' 张' : '';
   };
@@ -587,184 +583,297 @@ function pickPhoto(fromCamera) {
 async function submitCheckin() {
   const note = document.getElementById('checkin-note').value;
   const calEl = document.getElementById('checkin-cal');
-  const today = new Date().toISOString().slice(0, 10);
-  const photoURLs = [];
-  for (const f of _checkinPhotos) photoURLs.push(await _fileToDataURL(f));
-  const photoPath = photoURLs.length > 0 ? JSON.stringify(photoURLs) : null;
-  closeModal();
-  await DB.saveCheckin(today, _checkinType, photoPath, note, 1);
-  if (note) await DB.saveAiMemory(`[${_checkinType}] ${note}`, 'insight');
-  loadToday();
-}
+  const form = new FormData();
+  form.append('meal_type', _checkinType);
+  form.append('note', note || '');
+  if (_checkinPhotos.length > 0) { _checkinPhotos.forEach(p => form.append('photos', p)); }
+  if (calEl) form.append('calories_burned', calEl.value || '0');
 
-function _fileToDataURL(file) {
-  return new Promise(resolve => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(file); });
+  closeModal();
+  await fetch(API + '/api/checkin', {method:'POST', body:form});
+  loadToday();
 }
 
 // ===== Scale =====
 async function scanScale() {
-  if (!navigator.bluetooth) { alert('蓝牙功能需要手机 Chrome 浏览器\n请在手机上用 Chrome 打开此页面'); return; }
-  const UUID = '0000181b-0000-1000-8000-00805f9b34fb';
-  showModal('连接小米秤', `<p style="text-align:center;padding:16px;color:var(--text-secondary)">即将弹出蓝牙设备选择器<br><small>选择你的小米体脂秤</small></p><button class="btn btn-primary" style="width:100%" id="bluetooth-pair-btn">🔍 开始搜索</button>`);
+  // Web Bluetooth — 手机 Chrome 直连小米秤，无需后端
+  if (!navigator.bluetooth) {
+    alert('蓝牙功能需要手机 Chrome 浏览器\n请在手机上用 Chrome 打开此页面');
+    return;
+  }
+
+  const UUID_BCS = '0000181b-0000-1000-8000-00805f9b34fb';
+
+  showModal('连接小米秤',
+    `<p style="text-align:center;padding:16px;color:var(--text-secondary)">
+      即将弹出蓝牙设备选择器<br><small>选择你的小米体脂秤</small>
+    </p>
+    <button class="btn btn-primary" style="width:100%" id="bluetooth-pair-btn">🔍 开始搜索</button>`);
+
   document.getElementById('bluetooth-pair-btn').onclick = async () => {
     let device;
-    try { device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [UUID] }); }
-    catch (e) { closeModal(); if (e.name !== 'NotFoundError') alert('蓝牙错误：' + (e.message||'')); return; }
-    document.getElementById('modal-content').innerHTML = `<button class="modal-close" onclick="closeModal()">&times;</button><h3>正在搜索 ${device.name||'小米秤'}...</h3><p style="text-align:center;padding:20px;color:var(--text-secondary)">站上秤，保持站稳<br><small>等待读数稳定...</small></p>`;
-    const readings = []; let scan = true;
     try {
-      await device.gatt.connect(); await device.watchAdvertisements();
-      device.addEventListener('advertisementreceived', e => { if(!scan)return; try{const d=e.serviceData.get(UUID);if(d){const w=_psw(d);if(w)readings.push({t:Date.now(),w});}}catch(_){} });
-      await new Promise(resolve => { const dl=Date.now()+30000; const ck=setInterval(()=>{if(!scan){clearInterval(ck);resolve();return;} const l=readings.length?readings[readings.length-1].t:0; if(readings.length>0&&Date.now()-l>2500){clearInterval(ck);resolve();} if(Date.now()>dl){clearInterval(ck);resolve();} },600); });
-      scan=false; await device.gatt.disconnect();
-    } catch(e) { scan=false; closeModal(); alert('连接失败：'+(e.message||'')); return; }
-    closeModal(); if(!readings.length){alert('未检测到读数');return;}
-    const r=readings.slice(-5).map(x=>x.w).sort((a,b)=>a-b); const w=r[Math.floor(r.length/2)];
-    await DB.saveWeight(w,'scale'); const t=new Date().toISOString().slice(0,10); const p=await DB.getTodayPlan(t); if(p)await DB.saveTodayPlan(t,null,null,null,null,'');
+      // Step 1: 用户从系统弹窗中选择秤
+      device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [UUID_BCS],
+      });
+    } catch (e) {
+      closeModal();
+      if (e.name !== 'NotFoundError') alert('蓝牙错误：' + (e.message || '设备选择失败'));
+      return;
+    }
+
+    // Update modal — searching
+    document.getElementById('modal-content').innerHTML = `
+      <button class="modal-close" onclick="closeScaleScan()">&times;</button>
+      <h3 style="margin-bottom:12px">正在搜索 ${device.name || '小米秤'}...</h3>
+      <p style="text-align:center;padding:20px;color:var(--text-secondary)">站上秤，保持站稳<br><small>等待读数稳定...</small></p>`;
+
+    const readings = [];
+    let _scanning = true;
+
+    try {
+      const server = await device.gatt.connect();
+      await device.watchAdvertisements();
+      device.addEventListener('advertisementreceived', (event) => {
+        if (!_scanning) return;
+        try {
+          const data = event.serviceData.get(UUID_BCS);
+          if (data) {
+            const w = _parseScaleWeight(data);
+            if (w) readings.push({ t: Date.now(), w });
+          }
+        } catch(_) {}
+      });
+
+      // Wait for stable reading (2.5s silence) or 30s timeout
+      await new Promise((resolve) => {
+        const deadline = Date.now() + 30000;
+        const check = setInterval(() => {
+          if (!_scanning) { clearInterval(check); resolve(); return; }
+          const last = readings.length ? readings[readings.length-1].t : 0;
+          if (readings.length > 0 && Date.now() - last > 2500) { clearInterval(check); resolve(); }
+          if (Date.now() > deadline) { clearInterval(check); resolve(); }
+        }, 600);
+      });
+
+      _scanning = false;
+      await device.gatt.disconnect();
+    } catch (e) {
+      _scanning = false;
+      closeModal();
+      alert('连接失败：' + (e.message || ''));
+      return;
+    }
+
+    closeModal();
+
+    if (readings.length === 0) {
+      alert('未检测到读数，请站稳再试');
+      return;
+    }
+
+    // Median of last 5
+    const recent = readings.slice(-5).map(r => r.w).sort((a,b) => a-b);
+    const weight = recent[Math.floor(recent.length / 2)];
+
+    await fetch(API + '/api/weight', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'weight=' + weight
+    });
     loadToday();
   };
 }
-function _psw(d){if(d.byteLength<10)return null;const r=d.getUint16(d.byteLength-2,true);const w=r*0.005;return(w>20&&w<250)?Math.round(w*10)/10:null;}
 
-async function manualWeight() {
-  const w = prompt('输入体重（kg）：'); if (!w) return;
-  const kg = parseFloat(w); if (isNaN(kg) || kg < 30 || kg > 200) return;
-  await DB.saveWeight(kg, 'manual'); const t = new Date().toISOString().slice(0,10);
-  const p = await DB.getTodayPlan(t); if (p) await DB.saveTodayPlan(t, null, null, null, null, '');
-  loadToday();
+function _parseScaleWeight(data) {
+  // data is a DataView from Web Bluetooth advertisement
+  if (data.byteLength < 10) return null;
+  const raw = data.getUint16(data.byteLength - 2, true); // LE
+  const w = raw * 0.005;
+  return (w > 20 && w < 250) ? Math.round(w * 10) / 10 : null;
+}
+
+function closeScaleScan() {
+  closeModal();
+  if (window._bleDevice) {
+    try { window._bleDevice.gatt.disconnect(); } catch(_) {}
+  }
+}
+
+function manualWeight() {
+  const w = prompt('输入体重（kg）：');
+  if (!w) return;
+  const kg = parseFloat(w);
+  if (isNaN(kg) || kg < 30 || kg > 200) return;
+  fetch(API + '/api/weight', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:'weight='+kg
+  }).then(() => loadToday());
 }
 
 async function deleteWeight(id) {
   if (!confirm('确定删除这条体重记录吗？')) return;
-  await DB.deleteWeight(id); loadToday();
+  await fetch(API + '/api/weight/' + id, { method:'DELETE' });
+  loadToday();
 }
 
 // ===== Edit =====
 let _editType = null;
 
-async function editMeal(type) {
+function editMeal(type) {
   _editType = type;
   const labels = {breakfast:'早餐',lunch:'午餐',dinner:'晚餐',exercise:'运动'};
-  const today = new Date().toISOString().slice(0, 10);
-  const plan = await DB.getTodayPlan(today);
-  let cn='', cd='', cc='';
-  if (plan) { try { const d=JSON.parse(plan[type]||'{}'); cn=(d.name||'').replace(/"/g,'&quot;'); cd=(d.detail||'').replace(/"/g,'&quot;'); cc=d.calories||d.calories_burn||''; } catch(_) {} }
+  const isEx = type === 'exercise';
   showModal('修改 '+labels[type], `
-    <input id="edit-name" class="input" placeholder="名称" value="${cn}" style="margin-bottom:8px">
-    <input id="edit-detail" class="input" placeholder="详情" value="${cd}" style="margin-bottom:8px">
-    <input id="edit-cal" class="input" type="number" placeholder="热量 kcal" value="${cc}" style="margin-bottom:8px">
+    <input id="edit-name" class="input" placeholder="名称（留空保持原样）" style="margin-bottom:8px">
+    <input id="edit-detail" class="input" placeholder="详情（留空保持原样）" style="margin-bottom:8px">
+    ${isEx ? '' : '<div class="row" style="gap:8px;margin-bottom:8px"><input id="edit-cal" class="input" type="number" placeholder="热量 kcal" style="flex:1"><input id="edit-protein" class="input" placeholder="蛋白质 g" style="flex:1"><input id="edit-carb" class="input" placeholder="碳水 g" style="flex:1"></div>'}
     <button class="btn btn-primary" style="width:100%" onclick="submitEdit()">保存修改</button>
   `);
 }
 
-async function submitEdit() {
+function submitEdit() {
   const name = document.getElementById('edit-name').value;
   const detail = document.getElementById('edit-detail').value;
   const calEl = document.getElementById('edit-cal');
-  const today = new Date().toISOString().slice(0, 10);
-  const plan = await DB.getTodayPlan(today); if (!plan) { closeModal(); return; }
-  const bf = JSON.parse(plan.breakfast || '{}'); const lu = JSON.parse(plan.lunch || '{}');
-  const di = JSON.parse(plan.dinner || '{}'); const ex = JSON.parse(plan.exercise || '{}');
-  const tgt = {breakfast:bf,lunch:lu,dinner:di,exercise:ex}[_editType]||{};
-  if (name) tgt.name = name; if (detail) tgt.detail = detail;
-  if (calEl) { const v=parseInt(calEl.value)||0; tgt.calories = v; tgt.calories_burn = v; }
+  const form = new FormData();
+  form.append('meal', _editType);
+  form.append('name', name);
+  form.append('detail', detail);
+  if (calEl) form.append('calories', calEl.value || '0');
   const rn = name || '这个'; const rc = calEl ? calEl.value : '';
-  if (calEl && rc) localStorage.setItem('roast', JSON.stringify({n:rn,c:rc,t:Date.now(),type:_editType}));
-  await DB.saveTodayPlan(today, JSON.stringify(bf), JSON.stringify(lu), JSON.stringify(di), JSON.stringify(ex), plan.extra_notes);
-  closeModal(); loadPlan();
+  if (calEl && rc !== '') localStorage.setItem('roast', JSON.stringify({n:rn,c:rc,t:Date.now(),type:_editType}));
+  closeModal();
+  fetch(API + '/api/plan/update', {method:'POST', body:form}).then(() => loadPlan());
 }
 
 // ===== Week View =====
 async function loadWeekView() {
-  const ws = PlanEngine.getWeekMonday();
-  const days = PlanEngine.generateWeeklyPrompts();
-  const schedules = await DB.getWeekSchedule(ws);
-  const sm = {}; schedules.forEach(s => { sm[s.schedule_date] = s.plan_notes || ''; });
-  days.forEach(d => { d.notes = sm[d.date] || ''; });
+  const r = await fetch(API + '/api/week/schedule');
+  const data = await r.json();
   let html = '<div class="week-card"><div class="week-title">📅 本周安排</div>';
-  days.forEach((d, i) => {
-    html += `<div class="week-row"><span class="week-day-label">${d.day}</span><span class="week-day-date">${d.date_display}</span><input class="week-input" placeholder="有什么安排？" value="${(d.notes||'').replace(/"/g,'&quot;')}" data-day="${d.date}" data-idx="${i}"></div>`;
+  data.days.forEach((d,i) => {
+    html += `
+    <div class="week-row">
+      <span class="week-day-label">${d.day}</span>
+      <span class="week-day-date">${d.date_display}</span>
+      <input class="week-input" placeholder="有什么安排？" value="${d.notes||''}" data-day="${d.date}" data-idx="${i}">
+    </div>`;
   });
   html += '<button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="saveWeek()">保存本周</button></div>';
   document.getElementById('main-content').innerHTML = html;
 }
 
 async function saveWeek() {
-  const ws = PlanEngine.getWeekMonday();
-  for (const inp of document.querySelectorAll('.week-input'))
-    await DB.saveWeekSchedule(ws, parseInt(inp.dataset.idx), inp.dataset.day, inp.value);
+  const inputs = document.querySelectorAll('.week-input');
+  const days = [];
+  inputs.forEach(inp => days.push({date:inp.dataset.day, day_index:parseInt(inp.dataset.idx), notes:inp.value}));
+  await fetch(API + '/api/week/schedule', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days})});
   alert('已保存！');
 }
 
 // ===== Victory View =====
 async function loadVictoryView() {
-  const ws = PlanEngine.getWeekMonday();
-  const stats = await DB.getWeekStats(ws);
-  const mems = await DB.getAiMemories(7);
-  const profile = await DB.getUserProfile();
-  const latest = await DB.getLatestWeight();
+  let data;
+  try {
+    const r = await fetch(API + '/api/week/stats');
+    data = await r.json();
+    try { const pr = await fetch(API + '/api/today'); const td = await pr.json(); data.profile_weight = td.weight; } catch(e) {}
+  } catch(e) { return; }
 
-  const s = stats;
-  let emoji='🎉', title='本周胜利！', sub='又熬过了一周，不容易';
-  if (s.weight_change && s.weight_change < -0.5) { emoji='🏆'; title='超棒的一周！'; sub='体重在往下走！'; }
-  else if (s.active_days >= 5) { emoji='🌟'; title='稳定的一周！'; sub='你几乎每天都在'; }
-  else if (s.active_days >= 2) { emoji='💪'; title='你来了！'; sub='每一次打卡都算数'; }
+  const s = data.stats;
+  let emoji = '🎉', title = '本周胜利！', sub = '又熬过了一周，不容易';
 
-  let html = `<div class="victory-hero"><div class="victory-emoji">${emoji}</div><div class="victory-title">${title}</div><div class="victory-sub">${sub}</div><button class="btn btn-sm ghost" style="margin-top:12px" onclick="exportReport()">📄 导出日报</button></div>
+  if (s.weight_change && s.weight_change < -0.5) { emoji = '🏆'; title = '超棒的一周！'; sub = '体重在往下走！'; }
+  else if (s.active_days >= 5) { emoji = '🌟'; title = '稳定的一周！'; sub = '你几乎每天都在'; }
+  else if (s.active_days >= 2) { emoji = '💪'; title = '你来了！'; sub = '每一次打卡都算数'; }
+
+  let html = `
+  <div class="victory-hero">
+    <div class="victory-emoji">${emoji}</div>
+    <div class="victory-title">${title}</div>
+    <div class="victory-sub">${sub}</div><button class="btn btn-sm ghost" style="margin-top:12px" onclick="exportReport()">📄 导出日报</button>
+  </div>
   <div class="stat-grid">
     <div class="stat-card"><div class="stat-value">${s.active_days}/7</div><div class="stat-label">活跃天数</div></div>
     <div class="stat-card"><div class="stat-value">${s.total_checkins}</div><div class="stat-label">打卡次数</div></div>
-    <div class="stat-card"><div class="stat-value">${latest ? latest.weight_kg.toFixed(1) : '--'}</div><div class="stat-label">当前体重</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:${s.weight_change&&s.weight_change<0?'var(--green)':'var(--rose)'}">${s.weight_change?(s.weight_change>0?'+':'')+s.weight_change.toFixed(1):'--'}</div><div class="stat-label">体重变化</div></div>
+    <div class="stat-card"><div class="stat-value">${data.profile_weight || (s.start_weight ? s.start_weight.toFixed(1) : '--')}</div><div class="stat-label">起始体重</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:${s.weight_change && s.weight_change<0 ? 'var(--green)' : 'var(--rose)'}">${s.weight_change ? (s.weight_change>0?'+':'')+s.weight_change.toFixed(1) : '--'}</div><div class="stat-label">体重变化</div></div>
   </div>`;
 
+  // Achievements
   const badges = [];
-  if (s.active_days>=1) badges.push({e:'✨',t:'开始啦',d:'减脂之旅第一步！'});
-  if (s.active_days>=7) badges.push({e:'👑',t:'全勤周',d:'本周每天都打卡了！'});
-  else if (s.active_days>=5) badges.push({e:'⭐',t:'坚持周',d:'本周打卡5天以上'});
-  else if (s.active_days>=3) badges.push({e:'🌱',t:'起步周',d:'本周打卡3天'});
-  if (s.weight_change&&s.weight_change<-0.3) badges.push({e:'📉',t:'体重下降',d:'这周体重在往下走'});
-  if (s.total_checkins>=10) badges.push({e:'🔥',t:'打卡达人',d:'本周打卡超过10次'});
-  if (mems&&mems.length>=3) badges.push({e:'🧠',t:'洞察满满',d:'积累了很多自我发现'});
-  if (!badges.length) badges.push({e:'🕐',t:'等待打卡',d:'开始打卡后解锁成就'});
-
-  html += '<div class="section-label" style="margin-top:16px">🏅 本周成就</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">';
-  badges.forEach(b => { html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:10px 14px;text-align:center;min-width:80px"><div style="font-size:1.5em">${b.e}</div><div style="font-size:0.75em;font-weight:700">${b.t}</div><div style="font-size:0.65em;color:var(--text-tertiary)">${b.d}</div></div>`; });
-  html += '</div>';
-
-  if (mems && mems.length > 0) {
-    html += '<div class="insight-list" style="margin-top:16px"><div class="section-label">本周洞察</div>';
-    mems.forEach(m => { html += `<div class="insight-item">${m.content}</div>`; });
+  if (s.active_days >= 1) badges.push({e:'✨',t:'开始啦',d:'减脂之旅第一步！'});
+  if (s.active_days >= 7) badges.push({e:'👑',t:'全勤周',d:'本周每天都打卡了！'});
+  else if (s.active_days >= 5) badges.push({e:'⭐',t:'坚持周',d:'本周打卡5天以上'});
+  else if (s.active_days >= 3) badges.push({e:'🌱',t:'起步周',d:'本周打卡3天，好的开始'});
+  if (s.weight_change && s.weight_change < -0.3) badges.push({e:'📉',t:'体重下降',d:'这周体重在往下走'});
+  if (s.total_checkins >= 10) badges.push({e:'🔥',t:'打卡达人',d:'本周打卡超过10次'});
+  if (data.memories && data.memories.length >= 3) badges.push({e:'🧠',t:'洞察满满',d:'积累了很多自我发现'});
+  if (badges.length === 0) badges.push({e:'🕐',t:'等待打卡',d:'开始打卡后解锁成就'});
+  if (badges.length > 0) {
+    html += '<div class="section-label" style="margin-top:16px">🏅 本周成就</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">';
+    badges.forEach(b => {
+      html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:10px 14px;text-align:center;min-width:80px"><div style="font-size:1.5em">${b.e}</div><div style="font-size:0.75em;font-weight:700">${b.t}</div><div style="font-size:0.65em;color:var(--text-tertiary)">${b.d}</div></div>`;
+    });
     html += '</div>';
   }
 
-  const history = await DB.getCheckinHistory(7);
-  if (history.length > 0) {
-    const lb={breakfast:'早餐',lunch:'午餐',dinner:'晚餐',exercise:'运动'};
-    const eb={breakfast:'🌅',lunch:'☀️',dinner:'🌙',exercise:'🏃'};
-    html += '<div class="section-label" style="margin-top:16px">📋 最近打卡</div>';
-    history.forEach(it => {
-      html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px"><span>${eb[it.meal_type]}</span><div style="flex:1"><div style="font-weight:600;font-size:0.85em">${lb[it.meal_type]}</div><div style="color:var(--text-secondary);font-size:0.78em">${it.checkin_date}</div></div>`;
-      if (it.note) html += `<div style="color:var(--text-tertiary);font-size:0.75em;max-width:120px;text-align:right">${it.note}</div>`;
-      if (it.photo_path) { try { JSON.parse(it.photo_path).forEach(pp => { html += `<img src="${pp}" class="photo-thumb">`; }); } catch(e) { html += `<img src="${it.photo_path}" class="photo-thumb">`; } }
-      html += '</div>';
-    });
+  // Insights
+  if (data.memories && data.memories.length > 0) {
+    html += '<div class="insight-list" style="margin-top:16px">';
+    html += '<div class="section-label">本周洞察</div>';
+    data.memories.forEach(m => { html += `<div class="insight-item">${m}</div>`; });
+    html += '</div>';
   }
+
+  // History
+  try {
+    const hr = await fetch(API + '/api/history?days=7');
+    const hd = await hr.json();
+    const h = hd.history || [];
+    if (h.length > 0) {
+      const lb = {breakfast:'早餐',lunch:'午餐',dinner:'晚餐',exercise:'运动'};
+      const eb = {breakfast:'🌅',lunch:'☀️',dinner:'🌙',exercise:'🏃'};
+      html += '<div class="section-label" style="margin-top:16px">📋 最近打卡</div>';
+      h.forEach(it => {
+        html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
+        html += '<span style="font-size:1.2em">'+eb[it.meal_type]+'</span>';
+        html += '<div style="flex:1"><div style="font-weight:600;font-size:0.85em">'+lb[it.meal_type]+'</div>';
+        html += '<div style="color:var(--text-secondary);font-size:0.78em">'+it.checkin_date+'</div></div>';
+        if (it.note) html += '<div style="color:var(--text-tertiary);font-size:0.75em;max-width:120px;text-align:right">'+it.note+'</div>';
+        if (it.photo_path) {
+          try {
+            const pics = JSON.parse(it.photo_path);
+            pics.forEach(pp => { html += '<img src="/'+pp+'" class="photo-thumb">'; });
+          } catch(e) {
+            html += '<img src="/'+it.photo_path+'" class="photo-thumb">';
+          }
+        }
+        html += '</div>';
+      });
+    }
+  } catch(e) {}
+
   document.getElementById('main-content').innerHTML = html;
 }
 
 // ===== Health & Settings =====
-async function loadHealthMetrics() {
-  const el = document.getElementById('health-metrics'); if (!el) return;
+async function loadHealthMetrics(plan) {
+  const el = document.getElementById('health-metrics');
+  if (!el) return;
   try {
-    const profile = await DB.getUserProfile();
-    if (profile) {
-      const latest = await DB.getLatestWeight(); const w = latest ? latest.weight_kg : null;
-      const bmi = Health.calcBMI(w, profile.height_cm); const bmr = Health.calcBMR(w, profile.height_cm, profile.age);
-      const target = Health.calcTargetCalories(Health.calcTDEE(bmr, profile.activity_level));
+    const r = await fetch(API + '/api/settings');
+    const d = await r.json();
+    if (d.ok) {
       let h = '';
-      if (bmi) h += `<span>BMI ${bmi} (${Health.bmiLabel(bmi)})</span>`;
-      if (target) h += `<span>🎯 ${target} kcal/天</span>`;
+      if (d.bmi) h += `<span>BMI ${d.bmi} (${d.bmi_label})</span>`;
+      if (d.target_calories) h += `<span>🎯 ${d.target_calories} kcal/天</span>`;
+      if (plan && plan.target_calories) h += `<span>📊 今日 ${plan.total_calories} / ${plan.target_calories} kcal</span>`;
       el.innerHTML = h;
     }
   } catch(e) {}
@@ -775,99 +884,150 @@ async function openSettings() {
   html += '<input id="set-height" class="input" type="number" placeholder="身高 cm" style="margin-bottom:8px">';
   html += '<input id="set-age" class="input" type="number" placeholder="年龄" style="margin-bottom:8px">';
   html += '<select id="set-activity" class="input" style="margin-bottom:8px"><option value="sedentary">久坐</option><option value="light" selected>轻度活动</option><option value="moderate">中度活动</option><option value="active">高度活动</option></select>';
-  html += '<input id="set-allergies" class="input" placeholder="过敏原" style="margin-bottom:8px">';
-  html += '<input id="set-conditions" class="input" placeholder="慢性病" style="margin-bottom:8px">';
-  html += '<input id="set-meds" class="input" placeholder="服药情况" style="margin-bottom:12px">';
+  html += '<input id="set-allergies" class="input" placeholder="过敏原（如：坚果、海鲜）" style="margin-bottom:8px">';
+  html += '<input id="set-conditions" class="input" placeholder="慢性病（如：脂肪肝）" style="margin-bottom:8px">';
+  html += '<input id="set-meds" class="input" placeholder="服药情况（可选）" style="margin-bottom:12px">';
   html += '<button class="btn btn-primary" style="width:100%" onclick="saveSettings()">保存设置</button>';
   showModal('⚙️ 设置', html);
+  // Pre-fill existing values
   try {
-    const profile = await DB.getUserProfile();
-    if (profile) {
-      document.getElementById('set-height').value = profile.height_cm || '';
-      document.getElementById('set-age').value = profile.age || '';
-      document.getElementById('set-activity').value = profile.activity_level || 'light';
-      document.getElementById('set-allergies').value = profile.allergies || '';
-      document.getElementById('set-conditions').value = profile.conditions || '';
-      document.getElementById('set-meds').value = profile.medications || '';
-      const latest = await DB.getLatestWeight(); const w = latest ? latest.weight_kg : null;
-      const bmi = Health.calcBMI(w, profile.height_cm); const bmr = Health.calcBMR(w, profile.height_cm, profile.age);
-      const tdee = Health.calcTDEE(bmr, profile.activity_level); const target = Health.calcTargetCalories(tdee);
-      let s = ''; if (bmi) s += `BMI ${bmi} · ${Health.bmiLabel(bmi)}<br>`;
-      if (bmr) s += `基础代谢 ${bmr} kcal · 日消耗 ${tdee} kcal<br>`;
-      if (target) s += `🎯 减脂目标 ${target} kcal/天`;
+    const r = await fetch(API + '/api/settings');
+    const d = await r.json();
+    if (d.ok && d.profile) {
+      document.getElementById('set-height').value = d.profile.height_cm || '';
+      document.getElementById('set-age').value = d.profile.age || '';
+      document.getElementById('set-activity').value = d.profile.activity_level || 'light';
+      document.getElementById('set-allergies').value = d.profile.allergies || '';
+      document.getElementById('set-conditions').value = d.profile.conditions || '';
+      document.getElementById('set-meds').value = d.profile.medications || '';
+      let s = '';
+      if (d.bmi) s += `BMI ${d.bmi} · ${d.bmi_label}<br>`;
+      if (d.bmr) s += `基础代谢 ${d.bmr} kcal · 日消耗 ${d.tdee} kcal<br>`;
+      if (d.target_calories) s += `🎯 减脂目标 ${d.target_calories} kcal/天`;
       document.getElementById('settings-stats').innerHTML = '<div style="color:var(--accent);font-size:0.9em">'+s+'</div>';
     }
   } catch(e) {}
 }
 
 async function saveSettings() {
-  await DB.updateUserProfile({
-    height_cm: parseFloat(document.getElementById('set-height').value) || 171,
-    age: parseInt(document.getElementById('set-age').value) || 22,
+  const data = {
+    height_cm: document.getElementById('set-height').value,
+    age: document.getElementById('set-age').value,
     activity_level: document.getElementById('set-activity').value,
     allergies: document.getElementById('set-allergies').value,
     conditions: document.getElementById('set-conditions').value,
     medications: document.getElementById('set-meds').value,
-  });
-  closeModal(); loadToday();
+  };
+  const r = await fetch(API + '/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  if ((await r.json()).ok) {
+    closeModal();
+    loadToday();
+  }
 }
 
 // ===== Custom Items =====
 function addCustomItem() {
-  showModal('添加计划', `<button class="btn btn-ghost" style="width:100%;margin-bottom:8px" onclick="addCustom('meal')">🍽️ 添加饮食</button><button class="btn btn-ghost" style="width:100%" onclick="addCustom('exercise')">🏃 添加运动</button>`);
+  showModal('添加计划', `
+    <button class="btn btn-ghost" style="width:100%;margin-bottom:8px" onclick="addCustom('meal')">🍽️ 添加饮食</button>
+    <button class="btn btn-ghost" style="width:100%" onclick="addCustom('exercise')">🏃 添加运动</button>
+  `);
 }
 
-async function addCustom(type) {
+function addCustom(type) {
   closeModal();
-  const labels={meal:'饮食',exercise:'运动'};
-  const name=prompt(labels[type]+'名称：'); if(!name) return;
-  const detail=prompt(labels[type]+'详情（可跳过）：')||'';
-  const cal=type==='meal'?(prompt('热量 kcal（可跳过）：')||'0'):'0';
-  const today=new Date().toISOString().slice(0,10);
-  const plan=await DB.getTodayPlan(today);
-  if(plan){
-    const f=type==='meal'?'breakfast':'exercise';
-    const tgt=JSON.parse(plan[f]||'{}'); tgt.name=name; tgt.detail=detail;
-    if(type==='meal') tgt.calories=parseInt(cal)||0; else tgt.calories_burn=parseInt(cal)||0;
-    await DB.saveTodayPlan(today,type==='meal'?JSON.stringify(tgt):plan.breakfast,plan.lunch,plan.dinner,type==='exercise'?JSON.stringify(tgt):plan.exercise,plan.extra_notes);
-    loadPlan();
-  }
+  const labels = {meal:'饮食',exercise:'运动'};
+  const name = prompt(labels[type]+'名称：');
+  if (!name) return;
+  const detail = prompt(labels[type]+'详情（可跳过）：') || '';
+  const cal = type==='meal' ? (prompt('热量 kcal（可跳过）：') || '0') : '0';
+  // Save as a custom item via plan update with a special marker
+  const form = new FormData();
+  form.append('meal', type==='meal' ? 'breakfast' : 'exercise');
+  form.append('name', name);
+  form.append('detail', detail);
+  form.append('calories', cal);
+  fetch(API + '/api/plan/update', {method:'POST', body:form}).then(() => loadPlan());
 }
 
 // ===== Gap =====
-async function checkGap() { /* handled in loadToday */ }
+async function checkGap() {
+  try {
+    const r = await fetch(API + '/api/gap/recover');
+    const data = await r.json();
+    if (data.gap > 0) {
+      // Already handled in loadToday
+    }
+  } catch(e) {}
+}
 
 async function recoverGap() {
   const note = prompt('这几天怎么样？随便说说就好 :)');
-  if (note) await DB.saveBodyState(new Date().toISOString().slice(0,10), null, null, note, null);
+  if (note) {
+    await fetch(API + '/api/body/state', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'mood='+encodeURIComponent(note)
+    });
+  }
   loadToday();
 }
 
 // ===== Modal =====
 function showModal(title, content) {
-  document.getElementById('modal-content').innerHTML = `<button class="modal-close" onclick="closeModal()">&times;</button><h3 style="margin-bottom:12px">${title}</h3>${content}`;
+  document.getElementById('modal-content').innerHTML = `
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <h3 style="margin-bottom:12px">${title}</h3>${content}`;
   document.getElementById('modal-overlay').classList.remove('hidden');
 }
-function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
-
-// ===== Export =====
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+// ===== Export Report =====
 function exportReport() {
-  const days = prompt('导出最近几天？', '7'); if (!days) return;
-  fetch('/api/export?days='+days).then(r=>{if(r.ok)r.blob().then(b=>{const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='SlimBuddy_Report.docx';a.click();});else throw new Error('no');}).catch(()=>alert('导出需要后端支持\n本地运行 python app.py 即可'));
+  const days = prompt('导出最近几天？', '7');
+  if (!days) return;
+  window.open(API + '/api/export?days=' + days, '_blank');
 }
 
-// ===== AI Roast =====
+// ===== AI Roast (按热量分级，温和不刻薄) =====
 function generateRoast(name, calories) {
   const cal = parseInt(calories) || 0;
   let pool;
-  if (cal <= 150) pool = [`"${name}"才${cal}kcal，你是天使吧 😇`,`${cal}kcal，这么清淡，身体会谢谢你的 🌿`,`"${name}"：${cal}kcal。乖，就是要这样 👏`,`${cal}kcal，减脂模范生本人了 ⭐`,`就${cal}kcal？给你比个心 💚`];
-  else if (cal <= 500) pool = [`"${name}"${cal}kcal，正常发挥，没毛病 🙂`,`${cal}kcal，不多不少刚刚好 👌`,`"${name}"：${cal}kcal。吃得开心最重要~`,`${cal}kcal，稳住，我们能赢 ✊`];
-  else pool = [`"${name}"……${cal}kcal，今天想放纵一下对吧 😏`,`${cal}kcal的"${name}"，好吃对吧？我懂我懂 🤤`,`${cal}kcal！明天记得多走两步哦 🚶`,`"${name}"：${cal}kcal。没关系，一顿饭毁不掉你 💛`,`${cal}kcal，记下来了~ 不评判，只是陪你看着 🫶`];
+  if (cal <= 150) {
+    // 低卡 —— 夸奖
+    pool = [
+      `"${name}"才${cal}kcal，你是天使吧 😇`,
+      `${cal}kcal，这么清淡，身体会谢谢你的 🌿`,
+      `"${name}"：${cal}kcal。乖，就是要这样 👏`,
+      `${cal}kcal，减脂模范生本人了 ⭐`,
+      `就${cal}kcal？给你比个心 💚`,
+    ];
+  } else if (cal <= 500) {
+    // 中卡 —— 中性温和
+    pool = [
+      `"${name}"${cal}kcal，正常发挥，没毛病 🙂`,
+      `${cal}kcal，不多不少刚刚好 👌`,
+      `"${name}"：${cal}kcal。吃得开心最重要~`,
+      `${cal}kcal，稳住，我们能赢 ✊`,
+    ];
+  } else {
+    // 高卡 —— 温和调侃 + 兜底安慰
+    pool = [
+      `"${name}"……${cal}kcal，今天想放纵一下对吧 😏`,
+      `${cal}kcal的"${name}"，好吃对吧？我懂我懂 🤤`,
+      `${cal}kcal！明天记得多走两步哦 🚶`,
+      `"${name}"：${cal}kcal。没关系，一顿饭毁不掉你 💛`,
+      `${cal}kcal，记下来了~ 不评判，只是陪你看着 🫶`,
+    ];
+  }
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-// ===== PWA =====
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/static/sw.js').catch(() => {}); }
+// ===== Add custom item =====
+// ===== PWA Service Worker =====
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
