@@ -1,4 +1,2 @@
-﻿[build]
-aptPkgs = ["libbluetooth-dev"]
-
-[providers.python]
+﻿[providers]
+python = "3.11"
