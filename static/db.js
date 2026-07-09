@@ -171,8 +171,6 @@ const DB = (() => {
     return new Promise((resolve, reject) => {
       const tx = db.transaction('checkins', 'readonly');
       const store = tx.objectStore('checkins');
-      const req = store.index('id') ? null : store.getAll();
-      // Since we don't have a checkin_date index, use getAll and find max
       const allReq = store.getAll();
       allReq.onsuccess = () => {
         const dates = allReq.result.map(r => r.checkin_date).sort().reverse();

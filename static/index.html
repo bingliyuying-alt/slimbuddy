@@ -360,10 +360,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadWeather() {
   try {
-    const r = await fetch('https://wttr.in/Wuxi?format=%C+%t&lang=zh');
-    const raw = await r.text();
-    const text = raw.replace(/<[^>]+>/g, '').trim();
-    document.getElementById('weather-tag').textContent = text || '--';
+    const r = await fetch('/api/weather');
+    const d = await r.json();
+    document.getElementById('weather-tag').textContent = d.weather || '--';
   } catch(e) {
     document.getElementById('weather-tag').textContent = '--';
   }
