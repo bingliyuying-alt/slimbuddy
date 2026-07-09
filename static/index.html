@@ -601,6 +601,8 @@ async function scanScale() {
   try {
     const r = await fetch(API + '/api/scale/scan');
     const data = await r.json();
+    // 至少展示 2.5 秒，避免一闪而过
+    await new Promise(resolve => setTimeout(resolve, 2500));
     closeModal();
     if (data.ok) { loadToday(); }
     else { alert('未找到秤，站上去唤醒它'); }
