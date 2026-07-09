@@ -1,0 +1,7 @@
+﻿__pycache__/
+*.pyc
+data/slimbuddy.db
+uploads/*
+!uploads/.gitkeep
+venv/
+.env

@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#c4a0ff">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<title>SlimBuddy</title>
+<style>
+/* ===== Design System ===== */
+:root {
+  --bg-primary: #0f0f1a;
+  --bg-card: rgba(25, 23, 40, 0.85);
+  --bg-card-hover: rgba(35, 32, 55, 0.9);
+  --bg-input: rgba(15, 14, 28, 0.7);
+  --border: rgba(255,255,255,0.06);
+  --border-active: rgba(255,255,255,0.12);
+  --text-primary: #f0edf5;
+  --text-secondary: #8b87a3;
+  --text-tertiary: #5c5870;
+  --accent: #c4a0ff;
+  --accent-soft: rgba(196, 160, 255, 0.15);
+  --green: #6ee7b7;
+  --green-soft: rgba(110, 231, 183, 0.15);
+  --gold: #fbbf77;
+  --gold-soft: rgba(251, 191, 119, 0.15);
+  --rose: #fb7185;
+  --rose-soft: rgba(251, 113, 133, 0.15);
+  --sky: #7dd3fc;
+  --sky-soft: rgba(125, 211, 252, 0.15);
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 18px 100px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(196,160,255,0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 90% 80%, rgba(110,231,183,0.05), transparent);
+  background-attachment: fixed;
+}
+
+/* ===== Header ===== */
+header {
+  position: sticky; top:0; z-index:50;
+  padding: 18px 0 12px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(15,15,26,0.75);
+  border-bottom: 1px solid var(--border);
+}
+.header-top { display:flex; justify-content:space-between; align-items:center; }
+.logo { font-size:1.35em; font-weight:700; letter-spacing:-0.02em; }
+.logo span { color:var(--accent); }
+.weather-tag {
+  font-size: 0.8em; color: var(--text-secondary);
+  display:flex; align-items:center; gap:6px;
+  background: var(--bg-input); padding:6px 12px; border-radius:20px;
+}
+
+/* ===== Weight Hero ===== */
+.hero {
+  text-align:center; padding: 24px 0 18px;
+  position: relative;
+}
+.weight-ring {
+  display: inline-flex; flex-direction:column; align-items:center;
+  position: relative;
+}
+.weight-value {
+  font-size: 4.5em; font-weight: 800; letter-spacing: -0.03em;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.weight-unit { font-size:0.22em; font-weight:500; color:var(--text-secondary); -webkit-text-fill-color: var(--text-secondary); }
+.weight-date { font-size:0.78em; color:var(--text-tertiary); margin-top:4px; }
+.trend-badge {
+  display: inline-flex; align-items:center; gap:5px;
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 0.82em; font-weight:600; margin-top:10px;
+  letter-spacing: -0.01em;
+}
+.trend-down { background: var(--green-soft); color: var(--green); }
+.trend-up { background: var(--rose-soft); color: var(--rose); }
+.trend-stable { background: var(--gold-soft); color: var(--gold); }
+.scale-actions { display:flex; gap:8px; justify-content:center; margin-top:14px; }
+
+/* ===== Buttons ===== */
+.btn {
+  display: inline-flex; align-items:center; justify-content:center; gap:6px;
+  padding: 11px 22px; border: none; border-radius: var(--radius-sm);
+  font-size: 0.92em; font-weight: 600; cursor: pointer;
+  transition: var(--transition);
+  letter-spacing: -0.01em;
+  font-family: inherit;
+}
+.btn:active { transform:scale(0.97); }
+.btn-primary { background: var(--accent); color: #0f0f1a; }
+.btn-primary:hover { background: #d4b8ff; }
+.btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--border-active); color: var(--text-primary); }
+.btn-green { background: var(--green); color: #0f0f1a; }
+.btn-sm { padding:7px 15px; font-size:0.82em; border-radius:20px; }
+
+/* ===== Motto ===== */
+.motto {
+  text-align:center; padding: 10px 0 18px;
+  font-style: italic; color: var(--accent);
+  font-size: 0.95em; opacity:0.85;
+}
+
+/* ===== Meal Cards ===== */
+.section-label {
+  font-size:0.78em; font-weight:700; color:var(--text-tertiary);
+  text-transform:uppercase; letter-spacing:0.08em;
+  margin: 10px 0 10px;
+}
+.meal {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.meal::before {
+  content:''; position:absolute; left:0; top:0; bottom:0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+  transition: var(--transition);
+}
+.meal-bf::before { background: var(--gold); }
+.meal-lu::before { background: var(--accent); }
+.meal-di::before { background: var(--sky); }
+.meal-ex::before { background: var(--green); }
+.meal.done { opacity: 0.6; }
+.meal.done::before { opacity: 0.4; }
+.meal-header { display:flex; justify-content:space-between; align-items:flex-start; }
+.meal-icon { font-size:1.25em; }
+.meal-info { flex:1; margin-left:10px; }
+.meal-title { font-weight: 650; font-size:1em; letter-spacing:-0.01em; }
+.meal-desc { color: var(--text-secondary); font-size:0.85em; margin-top:3px; line-height:1.45; }
+.meal-reason {
+  color: var(--text-tertiary); font-size:0.78em; margin-top:6px;
+  display:flex; align-items:center; gap:4px;
+}
+.meal-actions { display:flex; gap:8px; margin-top:12px; }
+.badge-check {
+  display: inline-flex; align-items:center; gap:4px;
+  background: var(--green-soft); color: var(--green);
+  padding: 5px 12px; border-radius:20px;
+  font-size:0.78em; font-weight:600;
+}
+
+/* ===== Bottom Nav ===== */
+.bottom-nav {
+  position: fixed; bottom:0; left:50%; transform:translateX(-50%);
+  width:100%; max-width:480px;
+  background: rgba(20,18,32,0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+  z-index: 100;
+}
+.nav-item {
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding: 6px 0; cursor: pointer; transition: var(--transition);
+  color: var(--text-tertiary); font-size:0.7em; font-weight:600;
+  border: none; background: none;
+  letter-spacing: -0.01em;
+  font-family: inherit;
+}
+.nav-item.active { color: var(--accent); }
+.nav-item .nav-icon { font-size:1.5em; transition: var(--transition); }
+.nav-dot {
+  width:5px; height:5px; border-radius:50%;
+  background: var(--accent); opacity:0;
+  transition: var(--transition);
+}
+.nav-item.active .nav-dot { opacity:1; }
+
+/* ===== Progress ===== */
+.progress { display:flex; gap:8px; justify-content:center; margin:8px 0 2px; }
+.progress-dot {
+  width:8px; height:8px; border-radius:50%;
+  background: rgba(255,255,255,0.1);
+  transition: var(--transition);
+}
+.progress-dot.done { background: var(--green); box-shadow:0 0 8px rgba(110,231,183,0.5); }
+
+/* ===== Week View ===== */
+.week-card {
+  background: var(--bg-card); border:1px solid var(--border);
+  border-radius: var(--radius-lg); padding:20px;
+  margin-bottom:12px;
+}
+.week-title { font-size:1.1em; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.week-row {
+  display:flex; align-items:center; gap:10px; padding:10px 0;
+  border-bottom:1px solid var(--border);
+}
+.week-row:last-child { border:none; }
+.week-day-label { width:38px; font-weight:700; font-size:0.85em; }
+.week-day-date { width:42px; color: var(--text-tertiary); font-size:0.78em; }
+.week-input {
+  flex:1; background: var(--bg-input); border:1px solid var(--border);
+  color: var(--text-primary); border-radius: var(--radius-sm);
+  padding: 10px 14px; font-size:0.85em; font-family:inherit;
+  transition: var(--transition);
+}
+.week-input:focus { outline:none; border-color:var(--accent); background:rgba(196,160,255,0.05); }
+
+/* ===== Victory View ===== */
+.victory-hero { text-align:center; padding: 30px 0; }
+.victory-emoji { font-size:4em; animation: float 3s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+.victory-title { font-size:1.4em; font-weight:800; margin:12px 0 4px; }
+.victory-sub { color:var(--text-secondary); font-size:0.9em; }
+.stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:20px 0; }
+.stat-card {
+  background: var(--bg-card); border:1px solid var(--border);
+  border-radius: var(--radius-md); padding:16px; text-align:center;
+}
+.stat-value { font-size:1.5em; font-weight:800; }
+.stat-label { color:var(--text-tertiary); font-size:0.75em; margin-top:4px; }
+.insight-list { margin-top:16px; }
+.insight-item {
+  padding:12px; background: var(--bg-card); border:1px solid var(--border);
+  border-radius: var(--radius-sm); margin-bottom:8px;
+  font-size:0.88em; color: var(--text-secondary);
+}
+
+/* ===== Gap Banner ===== */
+.gap-banner {
+  background: linear-gradient(135deg, rgba(196,160,255,0.1), rgba(125,211,252,0.05));
+  border: 1px solid rgba(196,160,255,0.2);
+  border-radius: var(--radius-lg); padding:20px; text-align:center; margin-bottom:14px;
+}
+.gap-banner p { color:var(--text-secondary); line-height:1.7; font-size:0.9em; margin-bottom:12px; }
+
+/* ===== Modal ===== */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.8);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  z-index:200; display:flex; align-items:flex-end; justify-content:center;
+}
+.modal-sheet {
+  background: var(--bg-card); border:1px solid var(--border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 24px; max-width:480px; width:100%; max-height:80vh;
+  overflow-y:auto;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.modal-close {
+  float:right; background:none; border:none; color:var(--text-tertiary);
+  font-size:1.5em; cursor:pointer; padding:4px 8px;
+}
+
+/* ===== Input ===== */
+.input {
+  width:100%; background:var(--bg-input); border:1px solid var(--border);
+  color:var(--text-primary); border-radius:var(--radius-sm);
+  padding:12px 16px; font-size:0.95em; font-family:inherit;
+  transition: var(--transition);
+}
+.input:focus { outline:none; border-color:var(--accent); }
+
+/* ===== Hidden ===== */
+.hidden { display:none !important; }
+
+/* ===== Photo preview ===== */
+.photo-thumb {
+  width:60px; height:60px; border-radius:10px; object-fit:cover;
+  border: 1px solid var(--border);
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--text-tertiary); border-radius:10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="logo">Slim<span>Buddy</span></div>
+    <button id="settings-btn" style="background:none;border:none;font-size:1.2em;cursor:pointer;padding:4px 8px" onclick="openSettings()">⚙️</button>
+    <div class="weather-tag" id="weather-tag">--</div>
+  </div>
+</header>
+
+<main id="main-content">
+  <!-- Views are rendered here -->
+</main>
+
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="nav-item active" data-view="today">
+    <span class="nav-icon">☀️</span> 今日
+    <span class="nav-dot"></span>
+  </button>
+  <button class="nav-item" data-view="week">
+    <span class="nav-icon">📅</span> 本周
+    <span class="nav-dot"></span>
+  </button>
+  <button class="nav-item" data-view="victory">
+    <span class="nav-icon">🏆</span> 胜利
+    <span class="nav-dot"></span>
+  </button>
+</nav>
+
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div class="modal-sheet" id="modal-content"></div>
+</div>
+
+<script>
+// ===== State =====
+const API = '';
+let currentView = 'today';
+
+// ===== Init =====
+document.addEventListener('DOMContentLoaded', () => {
+  setupNav();
+  loadWeather();
+  loadToday();
+  checkGap();
+});
+
+async function loadWeather() {
+  try {
+    const r = await fetch(API + '/api/weather');
+    const wd = await r.json(); document.getElementById('weather-tag').textContent = wd.weather;
+  } catch(e) {
+    document.getElementById('weather-tag').textContent = '--';
+  }
+}
+
+// ===== Navigation =====
+function setupNav() {
+  document.querySelectorAll('#bottom-nav .nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('#bottom-nav .nav-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      currentView = item.dataset.view;
+      switchView(currentView);
+    });
+  });
+}
+
+function switchView(view) {
+  const main = document.getElementById('main-content');
+  main.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-tertiary)">加载中...</div>';
+  if (view === 'today') loadToday();
+  else if (view === 'week') loadWeekView();
+  else if (view === 'victory') loadVictoryView();
+}
+
+// ===== Today View =====
+async function loadToday() {
+  let data;
+  try {
+    const r = await fetch(API + '/api/today');
+    data = await r.json();
+    todayData = data;
+  } catch(e) {
+    document.getElementById('main-content').innerHTML = '<p style="text-align:center;padding:40px;color:var(--text-tertiary)">无法连接服务器. 服务器启动了吗？</p>';
+    return;
+  }
+
+  const w = data.weight;
+  const trendHtml = w ? '' : '';
+
+  let html = '';
+
+  // Gap banner
+  if (data.gap_days && data.gap_days > 0) {
+    html += `
+    <div class="gap-banner">
+      <p>嘿！ ${data.gap_days} 天没见了<br>完全没关系，最近怎么样？</p>
+      <button class="btn btn-sm btn-ghost" onclick="recoverGap()">我回来了！</button>
+    </div>`;
+  }
+
+  // Weight hero
+  html += `
+  <div class="hero">
+    <div class="weight-ring">
+      <div class="weight-value">${w ? w.toFixed(1) : '--'}<span class="weight-unit"> kg</span></div>
+      ${w ? `<div class="weight-date">上次： ${data.date}</div>` : ''}
+    </div>
+    <div class="scale-actions">
+      <button class="btn btn-sm btn-ghost" onclick="scanScale()">连接秤</button>
+      <button class="btn btn-sm btn-ghost" onclick="manualWeight()">手动输入</button>
+    </div>
+    <div id="health-metrics" style="display:flex;justify-content:center;gap:16px;margin-top:8px;font-size:0.78em;color:var(--text-secondary)"></div>
+  </div>`;
+
+  // Progress dots
+  if (data.checkins && data.checkins.length > 0) {
+    html += '<div class="progress">';
+    ['breakfast','lunch','dinner','exercise'].forEach(t => {
+      const done = data.checkins.find(c => c.meal_type === t && c.completed);
+      html += `<div class="progress-dot ${done?'done':''}"></div>`;
+    });
+    html += '</div>';
+  }
+
+  // Plan section
+  html += '<div class="section-label">今日计划</div>';
+  html += '<div id="plan-area">加载中...</div>';
+
+  document.getElementById('main-content').innerHTML = html;
+
+  // Load plan
+  await loadPlan();
+}
+
+async function loadPlan() {
+  const weather = document.getElementById('weather-tag').textContent;
+  let plan;
+  try {
+    const r = await fetch(API + '/api/plan/today?weather=' + encodeURIComponent(weather));
+    plan = await r.json();
+  } catch(e) {
+    document.getElementById('plan-area').innerHTML = '<p style="color:var(--text-tertiary);text-align:center">无法加载计划</p>';
+    return;
+  }
+
+  // Motto
+  let mel = document.querySelector('.motto');
+  const mt = (plan.extra && plan.extra.motto) || '你可以的。';
+  if (mel) mel.textContent = mt;
+  else { mel = document.createElement('div'); mel.className = 'motto'; mel.textContent = mt; document.getElementById('plan-area').parentNode.insertBefore(mel, document.getElementById('plan-area')); }
+
+  const meals = [
+    {key:'breakfast',icon:'Sunrise',emoji:'🌅',cls:'meal-bf'},
+    {key:'lunch',icon:'Sun',emoji:'☀️',cls:'meal-lu'},
+    {key:'dinner',icon:'Moon',emoji:'🌙',cls:'meal-di'},
+  ];
+
+  let planHtml = '';
+  meals.forEach(m => {
+    const item = plan[m.key];
+    if (!item) return;
+    const isChecked = todayData && todayData.checkins && todayData.checkins.find(c => c.meal_type === m.key && c.completed);
+    planHtml += `
+    <div class="meal ${m.cls} ${isChecked?'done':''}">
+      <div class="meal-header">
+        <span class="meal-icon">${m.emoji}</span>
+        <div class="meal-info">
+          <div class="meal-title">${item.name || m.key}  <span style="color:var(--gold);font-size:0.8em;font-weight:400">🔥 ${item.calories||'?'} kcal</span></div>
+          <div class="meal-desc">${item.detail || ''}</div>
+          ${item.reason ? `<div class="meal-reason">${isChecked ? '✅ 已打卡' : '💡 '+item.reason}</div>` : (isChecked ? '<div class="meal-reason">✅ 已打卡</div>' : '')}
+        </div>
+      </div>
+      <div class="meal-actions">
+        <button class="btn btn-sm ${isChecked?'btn-ghost':'btn-green'}" onclick="openCheckin('${m.key}')">${isChecked ? '✅ 已打卡' : '打卡'}</button>
+        <button class="btn btn-sm btn-ghost" onclick="editMeal('${m.key}')">修改</button>
+      </div>
+    </div>`;
+  });
+
+  // Exercise
+  const ex = plan.exercise;
+  if (ex) {
+    const exChecked = todayData && todayData.checkins && todayData.checkins.find(c => c.meal_type === 'exercise' && c.completed);
+    planHtml += `
+    <div class="meal meal-ex ${exChecked?'done':''}">
+      <div class="meal-header">
+        <span class="meal-icon">🏃</span>
+        <div class="meal-info">
+          <div class="meal-title">${ex.name || 'Exercise'}</div>
+          <div class="meal-desc">${ex.detail || ''}  <span style="color:var(--sky);font-size:0.85em">🏃 消耗 ${ex.calories_burn||0} kcal</span></div>
+          ${ex.reason ? `<div class="meal-reason">${exChecked ? '✅ 已打卡' : '💡 '+ex.reason}</div>` : (exChecked ? '<div class="meal-reason">✅ 已打卡</div>' : '')}
+        </div>
+      </div>
+      <div class="meal-actions">
+        <button class="btn btn-sm ${exChecked?'btn-ghost':'btn-green'}" onclick="openCheckin('exercise')">${exChecked ? '✅ 已打卡' : '打卡'}</button>
+        <button class="btn btn-sm btn-ghost" onclick="editMeal('exercise')">修改</button>
+      </div>
+    </div>`;
+  }
+
+  // Total calories
+  let totalCal = 0;
+  ['breakfast','lunch','dinner'].forEach(k => { if (plan[k] && plan[k].calories) totalCal += plan[k].calories; });
+  planHtml += `<div style="text-align:center;color:var(--gold);padding:8px;font-size:0.85em;font-weight:600">📊 今日约 ${totalCal || '?'} kcal</div>`;
+
+  // Add + button for custom items
+  planHtml += `<div style="text-align:center;margin-top:8px"><button class="btn btn-sm ghost" onclick="addCustomItem()">➕ 添加</button></div>`;
+  document.getElementById('plan-area').innerHTML = planHtml;
+  // Apply roast if just edited
+  try {
+    const rd = JSON.parse(localStorage.getItem('roast')||'null');
+    if (rd && Date.now()-rd.t<10000) {
+      const mealIdx2 = {breakfast:0,lunch:1,dinner:2,exercise:3}[rd.type]||0; const re = document.querySelectorAll('.meal-reason')[mealIdx2];
+      if (re) re.textContent = '🤖 '+generateRoast(rd.n, rd.c);
+      localStorage.removeItem('roast');
+    }
+  } catch(e) {}
+  loadHealthMetrics(plan);
+}
+
+// ===== Check-in (with photo modal) =====
+let _checkinType = null;
+let _checkinPhotos = [];
+
+function openCheckin(type) {
+  _checkinType = type;
+  _checkinPhotos = [];
+  const labels = {breakfast:'早餐',lunch:'午餐',dinner:'晚餐',exercise:'运动'};
+  const emojis = {breakfast:'🌅',lunch:'☀️',dinner:'🌙',exercise:'🏃'};
+  const isEx = type === 'exercise';
+  showModal(emojis[type]+' '+labels[type]+' 打卡', `
+    <textarea id="checkin-note" class="input" placeholder="写句话（可跳过）" rows="2" style="margin-bottom:12px"></textarea>
+    ${isEx ? '<input id="checkin-cal" class="input" type="number" placeholder="消耗卡路里 kcal" style="margin-bottom:12px">' : ''}
+    <div class="row" style="gap:8px;margin-bottom:12px">
+      <button class="btn btn-sm ghost" onclick="pickPhoto(true)">📷 拍照</button><button class="btn btn-sm ghost" onclick="pickPhoto(false)">🖼️ 相册（可多选）</button>
+      <span id="photo-status" style="font-size:0.8em;color:var(--text-tertiary)"></span>
+    </div>
+    <button class="btn btn-green" style="width:100%" onclick="submitCheckin()">✅ 确认打卡</button>
+  `);
+}
+
+function pickPhoto(fromCamera) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  if (fromCamera) inp.capture = 'environment';
+  if (!fromCamera) inp.multiple = true;
+  inp.onchange = () => {
+    if (inp.files.length > 0) {
+      for (const f of inp.files) {
+        if (_checkinPhotos.length >= 9) break;
+        _checkinPhotos.push(f);
+      }
+    }
+    const st = document.getElementById('photo-status');
+    if (st) st.textContent = _checkinPhotos.length > 0 ? '📸 '+_checkinPhotos.length+' 张' : '';
+  };
+  inp.click();
+}
+
+async function submitCheckin() {
+  const note = document.getElementById('checkin-note').value;
+  const calEl = document.getElementById('checkin-cal');
+  const form = new FormData();
+  form.append('meal_type', _checkinType);
+  form.append('note', note || '');
+  if (_checkinPhotos.length > 0) { _checkinPhotos.forEach(p => form.append('photos', p)); }
+  if (calEl) form.append('calories_burned', calEl.value || '0');
+
+  closeModal();
+  await fetch(API + '/api/checkin', {method:'POST', body:form});
+  loadToday();
+}
+
+// ===== Scale =====
+async function scanScale() {
+  showModal('正在搜索小米秤...',
+    '<p style="text-align:center;padding:20px;color:var(--text-secondary)">站上秤激活它<br><small>超时：30秒</small></p>');
+  try {
+    const r = await fetch(API + '/api/scale/scan');
+    const data = await r.json();
+    closeModal();
+    if (data.ok) { loadToday(); }
+    else { alert('未找到秤，站上去唤醒它'); }
+  } catch(e) { closeModal(); alert('连接失败'); }
+}
+
+function manualWeight() {
+  const w = prompt('输入体重（kg）：');
+  if (!w) return;
+  const kg = parseFloat(w);
+  if (isNaN(kg) || kg < 30 || kg > 200) return;
+  fetch(API + '/api/weight', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:'weight='+kg
+  }).then(() => loadToday());
+}
+
+// ===== Edit =====
+let _editType = null;
+
+function editMeal(type) {
+  _editType = type;
+  const labels = {breakfast:'早餐',lunch:'午餐',dinner:'晚餐',exercise:'运动'};
+  const isEx = type === 'exercise';
+  showModal('修改 '+labels[type], `
+    <input id="edit-name" class="input" placeholder="名称（留空保持原样）" style="margin-bottom:8px">
+    <input id="edit-detail" class="input" placeholder="详情（留空保持原样）" style="margin-bottom:8px">
+    ${isEx ? '' : '<div class="row" style="gap:8px;margin-bottom:8px"><input id="edit-cal" class="input" type="number" placeholder="热量 kcal" style="flex:1"><input id="edit-protein" class="input" placeholder="蛋白质 g" style="flex:1"><input id="edit-carb" class="input" placeholder="碳水 g" style="flex:1"></div>'}
+    <button class="btn btn-primary" style="width:100%" onclick="submitEdit()">保存修改</button>
+  `);
+}
+
+function submitEdit() {
+  const name = document.getElementById('edit-name').value;
+  const detail = document.getElementById('edit-detail').value;
+  const calEl = document.getElementById('edit-cal');
+  const form = new FormData();
+  form.append('meal', _editType);
+  form.append('name', name);
+  form.append('detail', detail);
+  if (calEl) form.append('calories', calEl.value || '0');
+  const rn = name || '这个'; const rc = calEl ? calEl.value : '';
+  if (calEl && rc !== '') localStorage.setItem('roast', JSON.stringify({n:rn,c:rc,t:Date.now(),type:_editType}));
+  closeModal();
+  fetch(API + '/api/plan/update', {method:'POST', body:form}).then(() => loadPlan());
+}
+
+// ===== Week View =====
+async function loadWeekView() {
+  const r = await fetch(API + '/api/week/schedule');
+  const data = await r.json();
+  let html = '<div class="week-card"><div class="week-title">📅 本周安排</div>';
+  data.days.forEach((d,i) => {
+    html += `
+    <div class="week-row">
+      <span class="week-day-label">${d.day}</span>
+      <span class="week-day-date">${d.date_display}</span>
+      <input class="week-input" placeholder="有什么安排？" value="${d.notes||''}" data-day="${d.date}" data-idx="${i}">
+    </div>`;
+  });
+  html += '<button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="saveWeek()">保存本周</button></div>';
+  document.getElementById('main-content').innerHTML = html;
+}
+
+async function saveWeek() {
+  const inputs = document.querySelectorAll('.week-input');
+  const days = [];
+  inputs.forEach(inp => days.push({date:inp.dataset.day, day_index:parseInt(inp.dataset.idx), notes:inp.value}));
+  await fetch(API + '/api/week/schedule', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days})});
+  alert('已保存！');
+}
+
+// ===== Victory View =====
+async function loadVictoryView() {
+  let data;
+  try {
+    const r = await fetch(API + '/api/week/stats');
+    data = await r.json();
+    try { const pr = await fetch(API + '/api/today'); const td = await pr.json(); data.profile_weight = td.weight; } catch(e) {}
+  } catch(e) { return; }
+
+  const s = data.stats;
+  let emoji = '🎉', title = '本周胜利！', sub = '又熬过了一周，不容易';
+
+  if (s.weight_change && s.weight_change < -0.5) { emoji = '🏆'; title = '超棒的一周！'; sub = '体重在往下走！'; }
+  else if (s.active_days >= 5) { emoji = '🌟'; title = '稳定的一周！'; sub = '你几乎每天都在'; }
+  else if (s.active_days >= 2) { emoji = '💪'; title = '你来了！'; sub = '每一次打卡都算数'; }
+
+  let html = `
+  <div class="victory-hero">
+    <div class="victory-emoji">${emoji}</div>
+    <div class="victory-title">${title}</div>
+    <div class="victory-sub">${sub}</div><button class="btn btn-sm ghost" style="margin-top:12px" onclick="exportReport()">📄 导出日报</button>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-value">${s.active_days}/7</div><div class="stat-label">活跃天数</div></div>
+    <div class="stat-card"><div class="stat-value">${s.total_checkins}</div><div class="stat-label">打卡次数</div></div>
+    <div class="stat-card"><div class="stat-value">${data.profile_weight || (s.start_weight ? s.start_weight.toFixed(1) : '--')}</div><div class="stat-label">起始体重</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:${s.weight_change && s.weight_change<0 ? 'var(--green)' : 'var(--rose)'}">${s.weight_change ? (s.weight_change>0?'+':'')+s.weight_change.toFixed(1) : '--'}</div><div class="stat-label">体重变化</div></div>
+  </div>`;
+
+  // Achievements
+  const badges = [];
+  if (s.active_days >= 1) badges.push({e:'✨',t:'开始啦',d:'减脂之旅第一步！'});
+  if (s.active_days >= 7) badges.push({e:'👑',t:'全勤周',d:'本周每天都打卡了！'});
+  else if (s.active_days >= 5) badges.push({e:'⭐',t:'坚持周',d:'本周打卡5天以上'});
+  else if (s.active_days >= 3) badges.push({e:'🌱',t:'起步周',d:'本周打卡3天，好的开始'});
+  if (s.weight_change && s.weight_change < -0.3) badges.push({e:'📉',t:'体重下降',d:'这周体重在往下走'});
+  if (s.total_checkins >= 10) badges.push({e:'🔥',t:'打卡达人',d:'本周打卡超过10次'});
+  if (data.memories && data.memories.length >= 3) badges.push({e:'🧠',t:'洞察满满',d:'积累了很多自我发现'});
+  if (badges.length === 0) badges.push({e:'🕐',t:'等待打卡',d:'开始打卡后解锁成就'});
+  if (badges.length > 0) {
+    html += '<div class="section-label" style="margin-top:16px">🏅 本周成就</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">';
+    badges.forEach(b => {
+      html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:10px 14px;text-align:center;min-width:80px"><div style="font-size:1.5em">${b.e}</div><div style="font-size:0.75em;font-weight:700">${b.t}</div><div style="font-size:0.65em;color:var(--text-tertiary)">${b.d}</div></div>`;
+    });
+    html += '</div>';
+  }
+
+  // Insights
+  if (data.memories && data.memories.length > 0) {
+    html += '<div class="insight-list" style="margin-top:16px">';
+    html += '<div class="section-label">本周洞察</div>';
+    data.memories.forEach(m => { html += `<div class="insight-item">${m}</div>`; });
+    html += '</div>';
+  }
+
+  // History
+  try {
+    const hr = await fetch(API + '/api/history?days=7');
+    const hd = await hr.json();
+    const h = hd.history || [];
+    if (h.length > 0) {
+      const lb = {breakfast:'早餐',lunch:'午餐',dinner:'晚餐',exercise:'运动'};
+      const eb = {breakfast:'🌅',lunch:'☀️',dinner:'🌙',exercise:'🏃'};
+      html += '<div class="section-label" style="margin-top:16px">📋 最近打卡</div>';
+      h.forEach(it => {
+        html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
+        html += '<span style="font-size:1.2em">'+eb[it.meal_type]+'</span>';
+        html += '<div style="flex:1"><div style="font-weight:600;font-size:0.85em">'+lb[it.meal_type]+'</div>';
+        html += '<div style="color:var(--text-secondary);font-size:0.78em">'+it.checkin_date+'</div></div>';
+        if (it.note) html += '<div style="color:var(--text-tertiary);font-size:0.75em;max-width:120px;text-align:right">'+it.note+'</div>';
+        if (it.photo_path) {
+          try {
+            const pics = JSON.parse(it.photo_path);
+            pics.forEach(pp => { html += '<img src="/'+pp+'" class="photo-thumb">'; });
+          } catch(e) {
+            html += '<img src="/'+it.photo_path+'" class="photo-thumb">';
+          }
+        }
+        html += '</div>';
+      });
+    }
+  } catch(e) {}
+
+  document.getElementById('main-content').innerHTML = html;
+}
+
+// ===== Health & Settings =====
+async function loadHealthMetrics(plan) {
+  const el = document.getElementById('health-metrics');
+  if (!el) return;
+  try {
+    const r = await fetch(API + '/api/settings');
+    const d = await r.json();
+    if (d.ok) {
+      let h = '';
+      if (d.bmi) h += `<span>BMI ${d.bmi} (${d.bmi_label})</span>`;
+      if (d.target_calories) h += `<span>🎯 ${d.target_calories} kcal/天</span>`;
+      if (plan && plan.target_calories) h += `<span>📊 今日 ${plan.total_calories} / ${plan.target_calories} kcal</span>`;
+      el.innerHTML = h;
+    }
+  } catch(e) {}
+}
+
+async function openSettings() {
+  let html = '<div style="text-align:center;padding:10px 0" id="settings-stats"></div>';
+  html += '<input id="set-height" class="input" type="number" placeholder="身高 cm" style="margin-bottom:8px">';
+  html += '<input id="set-age" class="input" type="number" placeholder="年龄" style="margin-bottom:8px">';
+  html += '<select id="set-activity" class="input" style="margin-bottom:8px"><option value="sedentary">久坐</option><option value="light" selected>轻度活动</option><option value="moderate">中度活动</option><option value="active">高度活动</option></select>';
+  html += '<input id="set-allergies" class="input" placeholder="过敏原（如：坚果、海鲜）" style="margin-bottom:8px">';
+  html += '<input id="set-conditions" class="input" placeholder="慢性病（如：脂肪肝）" style="margin-bottom:8px">';
+  html += '<input id="set-meds" class="input" placeholder="服药情况（可选）" style="margin-bottom:12px">';
+  html += '<button class="btn btn-primary" style="width:100%" onclick="saveSettings()">保存设置</button>';
+  showModal('⚙️ 设置', html);
+  // Pre-fill existing values
+  try {
+    const r = await fetch(API + '/api/settings');
+    const d = await r.json();
+    if (d.ok && d.profile) {
+      document.getElementById('set-height').value = d.profile.height_cm || '';
+      document.getElementById('set-age').value = d.profile.age || '';
+      document.getElementById('set-activity').value = d.profile.activity_level || 'light';
+      document.getElementById('set-allergies').value = d.profile.allergies || '';
+      document.getElementById('set-conditions').value = d.profile.conditions || '';
+      document.getElementById('set-meds').value = d.profile.medications || '';
+      let s = '';
+      if (d.bmi) s += `BMI ${d.bmi} · ${d.bmi_label}<br>`;
+      if (d.bmr) s += `基础代谢 ${d.bmr} kcal · 日消耗 ${d.tdee} kcal<br>`;
+      if (d.target_calories) s += `🎯 减脂目标 ${d.target_calories} kcal/天`;
+      document.getElementById('settings-stats').innerHTML = '<div style="color:var(--accent);font-size:0.9em">'+s+'</div>';
+    }
+  } catch(e) {}
+}
+
+async function saveSettings() {
+  const data = {
+    height_cm: document.getElementById('set-height').value,
+    age: document.getElementById('set-age').value,
+    activity_level: document.getElementById('set-activity').value,
+    allergies: document.getElementById('set-allergies').value,
+    conditions: document.getElementById('set-conditions').value,
+    medications: document.getElementById('set-meds').value,
+  };
+  const r = await fetch(API + '/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  if ((await r.json()).ok) {
+    closeModal();
+    loadToday();
+  }
+}
+
+// ===== Custom Items =====
+function addCustomItem() {
+  showModal('添加计划', `
+    <button class="btn btn-ghost" style="width:100%;margin-bottom:8px" onclick="addCustom('meal')">🍽️ 添加饮食</button>
+    <button class="btn btn-ghost" style="width:100%" onclick="addCustom('exercise')">🏃 添加运动</button>
+  `);
+}
+
+function addCustom(type) {
+  closeModal();
+  const labels = {meal:'饮食',exercise:'运动'};
+  const name = prompt(labels[type]+'名称：');
+  if (!name) return;
+  const detail = prompt(labels[type]+'详情（可跳过）：') || '';
+  const cal = type==='meal' ? (prompt('热量 kcal（可跳过）：') || '0') : '0';
+  // Save as a custom item via plan update with a special marker
+  const form = new FormData();
+  form.append('meal', type==='meal' ? 'breakfast' : 'exercise');
+  form.append('name', name);
+  form.append('detail', detail);
+  form.append('calories', cal);
+  fetch(API + '/api/plan/update', {method:'POST', body:form}).then(() => loadPlan());
+}
+
+// ===== Gap =====
+async function checkGap() {
+  try {
+    const r = await fetch(API + '/api/gap/recover');
+    const data = await r.json();
+    if (data.gap > 0) {
+      // Already handled in loadToday
+    }
+  } catch(e) {}
+}
+
+async function recoverGap() {
+  const note = prompt('这几天怎么样？随便说说就好 :)');
+  if (note) {
+    await fetch(API + '/api/body/state', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'mood='+encodeURIComponent(note)
+    });
+  }
+  loadToday();
+}
+
+// ===== Modal =====
+function showModal(title, content) {
+  document.getElementById('modal-content').innerHTML = `
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <h3 style="margin-bottom:12px">${title}</h3>${content}`;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+// ===== Export Report =====
+function exportReport() {
+  const days = prompt('导出最近几天？', '7');
+  if (!days) return;
+  window.open(API + '/api/export?days=' + days, '_blank');
+}
+
+// ===== AI Roast (按热量分级，温和不刻薄) =====
+function generateRoast(name, calories) {
+  const cal = parseInt(calories) || 0;
+  let pool;
+  if (cal <= 150) {
+    // 低卡 —— 夸奖
+    pool = [
+      `"${name}"才${cal}kcal，你是天使吧 😇`,
+      `${cal}kcal，这么清淡，身体会谢谢你的 🌿`,
+      `"${name}"：${cal}kcal。乖，就是要这样 👏`,
+      `${cal}kcal，减脂模范生本人了 ⭐`,
+      `就${cal}kcal？给你比个心 💚`,
+    ];
+  } else if (cal <= 500) {
+    // 中卡 —— 中性温和
+    pool = [
+      `"${name}"${cal}kcal，正常发挥，没毛病 🙂`,
+      `${cal}kcal，不多不少刚刚好 👌`,
+      `"${name}"：${cal}kcal。吃得开心最重要~`,
+      `${cal}kcal，稳住，我们能赢 ✊`,
+    ];
+  } else {
+    // 高卡 —— 温和调侃 + 兜底安慰
+    pool = [
+      `"${name}"……${cal}kcal，今天想放纵一下对吧 😏`,
+      `${cal}kcal的"${name}"，好吃对吧？我懂我懂 🤤`,
+      `${cal}kcal！明天记得多走两步哦 🚶`,
+      `"${name}"：${cal}kcal。没关系，一顿饭毁不掉你 💛`,
+      `${cal}kcal，记下来了~ 不评判，只是陪你看着 🫶`,
+    ];
+  }
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ===== Add custom item =====
+// ===== PWA Service Worker =====
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
