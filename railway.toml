@@ -1,0 +1,4 @@
+﻿[build]
+aptPkgs = ["libbluetooth-dev"]
+
+[providers.python]
