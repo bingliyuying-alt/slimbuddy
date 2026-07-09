@@ -1,6 +1,6 @@
 {
   "build": {
     "builder": "nixpacks",
-    "configFile": "railway.toml"
+    "configFile": "nixpacks.toml"
   }
 }
