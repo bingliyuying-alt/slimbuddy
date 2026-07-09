@@ -602,28 +602,21 @@ function _fileToDataURL(file) {
 
 // ===== Scale =====
 async function scanScale() {
-  if (!navigator.bluetooth) { alert('蓝牙功能需要手机 Chrome 浏览器\n请在手机上用 Chrome 打开此页面'); return; }
-  const UUID = '0000181b-0000-1000-8000-00805f9b34fb';
-  showModal('连接小米秤', `<p style="text-align:center;padding:16px;color:var(--text-secondary)">即将弹出蓝牙设备选择器<br><small>选择你的小米体脂秤</small></p><button class="btn btn-primary" style="width:100%" id="bluetooth-pair-btn">🔍 开始搜索</button>`);
-  document.getElementById('bluetooth-pair-btn').onclick = async () => {
-    let device;
-    try { device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [UUID] }); }
-    catch (e) { closeModal(); if (e.name !== 'NotFoundError') alert('蓝牙错误：' + (e.message||'')); return; }
-    document.getElementById('modal-content').innerHTML = `<button class="modal-close" onclick="closeModal()">&times;</button><h3>正在搜索 ${device.name||'小米秤'}...</h3><p style="text-align:center;padding:20px;color:var(--text-secondary)">站上秤，保持站稳<br><small>等待读数稳定...</small></p>`;
-    const readings = []; let scan = true;
-    try {
-      await device.gatt.connect(); await device.watchAdvertisements();
-      device.addEventListener('advertisementreceived', e => { if(!scan)return; try{const d=e.serviceData.get(UUID);if(d){const w=_psw(d);if(w)readings.push({t:Date.now(),w});}}catch(_){} });
-      await new Promise(resolve => { const dl=Date.now()+30000; const ck=setInterval(()=>{if(!scan){clearInterval(ck);resolve();return;} const l=readings.length?readings[readings.length-1].t:0; if(readings.length>0&&Date.now()-l>2500){clearInterval(ck);resolve();} if(Date.now()>dl){clearInterval(ck);resolve();} },600); });
-      scan=false; await device.gatt.disconnect();
-    } catch(e) { scan=false; closeModal(); alert('连接失败：'+(e.message||'')); return; }
-    closeModal(); if(!readings.length){alert('未检测到读数');return;}
-    const r=readings.slice(-5).map(x=>x.w).sort((a,b)=>a-b); const w=r[Math.floor(r.length/2)];
-    await DB.saveWeight(w,'scale'); const t=new Date().toISOString().slice(0,10); const p=await DB.getTodayPlan(t); if(p)await DB.saveTodayPlan(t,null,null,null,null,'');
-    loadToday();
-  };
+  showModal('正在搜索小米秤...',
+    '<p style="text-align:center;padding:20px;color:var(--text-secondary)">站上秤激活它<br><small>超时：30秒</small></p>');
+  try {
+    const r = await fetch('/api/scale/scan');
+    const data = await r.json();
+    await new Promise(resolve => setTimeout(resolve, 2500));
+    closeModal();
+    if (data.ok) {
+      await DB.saveWeight(data.weight, 'scale');
+      loadToday();
+    } else {
+      alert('未找到秤，站上去唤醒它');
+    }
+  } catch(e) { closeModal(); alert('连接失败：请确保电脑蓝牙已开启'); }
 }
-function _psw(d){if(d.byteLength<10)return null;const r=d.getUint16(d.byteLength-2,true);const w=r*0.005;return(w>20&&w<250)?Math.round(w*10)/10:null;}
 
 async function manualWeight() {
   const w = prompt('输入体重（kg）：'); if (!w) return;
