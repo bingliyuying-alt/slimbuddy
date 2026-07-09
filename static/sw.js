@@ -1,7 +1,10 @@
 // SlimBuddy Service Worker
-const CACHE = 'slimbuddy-v1';
+const CACHE = 'slimbuddy-v2';
 const ASSETS = [
   '/',
+  '/static/db.js',
+  '/static/plan.js',
+  '/static/index.html',
   '/static/icon-192.png',
   '/static/icon-512.png',
   '/static/manifest.json'
