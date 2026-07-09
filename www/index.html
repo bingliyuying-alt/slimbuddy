@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#c4a0ff">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>SlimBuddy</title>
+<style>
+/* ===== Design System ===== */
+:root {
+  --bg-primary: #0f0f1a;
+  --bg-card: rgba(25, 23, 40, 0.85);
+  --bg-card-hover: rgba(35, 32, 55, 0.9);
+  --bg-input: rgba(15, 14, 28, 0.7);
+  --border: rgba(255,255,255,0.06);
+  --border-active: rgba(255,255,255,0.12);
+  --text-primary: #f0edf5;
+  --text-secondary: #8b87a3;
+  --text-tertiary: #5c5870;
+  --accent: #c4a0ff;
+  --accent-soft: rgba(196, 160, 255, 0.15);
+  --green: #6ee7b7;
+  --green-soft: rgba(110, 231, 183, 0.15);
+  --gold: #fbbf77;
+  --gold-soft: rgba(251, 191, 119, 0.15);
+  --rose: #fb7185;
+  --rose-soft: rgba(251, 113, 133, 0.15);
+  --sky: #7dd3fc;
+  --sky-soft: rgba(125, 211, 252, 0.15);
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 18px 100px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(196,160,255,0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 90% 80%, rgba(110,231,183,0.05), transparent);
+  background-attachment: fixed;
+}
+
+/* ===== Header ===== */
+header {
+  position: sticky; top:0; z-index:50;
+  padding: 18px 0 12px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(15,15,26,0.75);
+  border-bottom: 1px solid var(--border);
+}
+.header-top { display:flex; justify-content:space-between; align-items:center; }
+.logo { font-size:1.35em; font-weight:700; letter-spacing:-0.02em; }
+.logo span { color:var(--accent); }
+.weather-tag {
+  font-size: 0.8em; color: var(--text-secondary);
+  display:flex; align-items:center; gap:6px;
+  background: var(--bg-input); padding:6px 12px; border-radius:20px;
+}
+
+/* ===== Weight Hero ===== */
+.hero {
+  text-align:center; padding: 24px 0 18px;
+  position: relative;
+}
+.weight-ring {
+  display: inline-flex; flex-direction:column; align-items:center;
+  position: relative;
+}
+.weight-value {
+  font-size: 4.5em; font-weight: 800; letter-spacing: -0.03em;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.weight-unit { font-size:0.22em; font-weight:500; color:var(--text-secondary); -webkit-text-fill-color: var(--text-secondary); }
+.weight-date { font-size:0.78em; color:var(--text-tertiary); margin-top:4px; }
+.trend-badge {
+  display: inline-flex; align-items:center; gap:5px;
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 0.82em; font-weight:600; margin-top:10px;
+  letter-spacing: -0.01em;
+}
+.trend-down { background: var(--green-soft); color: var(--green); }
+.trend-up { background: var(--rose-soft); color: var(--rose); }
+.trend-stable { background: var(--gold-soft); color: var(--gold); }
+.scale-actions { display:flex; gap:8px; justify-content:center; margin-top:14px; }
+
+/* ===== Buttons ===== */
+.btn {
+  display: inline-flex; align-items:center; justify-content:center; gap:6px;
+  padding: 11px 22px; border: none; border-radius: var(--radius-sm);
+  font-size: 0.92em; font-weight: 600; cursor: pointer;
+  transition: var(--transition);
+  letter-spacing: -0.01em;
+  font-family: inherit;
+}
+.btn:active { transform:scale(0.97); }
+.btn-primary { background: var(--accent); color: #0f0f1a; }
+.btn-primary:hover { background: #d4b8ff; }
+.btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--border-active); color: var(--text-primary); }
+.btn-green { background: var(--green); color: #0f0f1a; }
+.btn-sm { padding:7px 15px; font-size:0.82em; border-radius:20px; }
+
+/* ===== Motto ===== */
+.motto {
+  text-align:center; padding: 10px 0 18px;
+  font-style: italic; color: var(--accent);
+  font-size: 0.95em; opacity:0.85;
+}
+
+/* ===== Meal Cards ===== */
+.section-label {
+  font-size:0.78em; font-weight:700; color:var(--text-tertiary);
+  text-transform:uppercase; letter-spacing:0.08em;
+  margin: 10px 0 10px;
+}
+.meal {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.meal::before {
+  content:''; position:absolute; left:0; top:0; bottom:0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+  transition: var(--transition);
+}
+.meal-bf::before { background: var(--gold); }
+.meal-lu::before { background: var(--accent); }
+.meal-di::before { background: var(--sky); }
+.meal-ex::before { background: var(--green); }
+.meal.done { opacity: 0.6; }
+.meal.done::before { opacity: 0.4; }
+.meal-header { display:flex; justify-content:space-between; align-items:flex-start; }
+.meal-icon { font-size:1.25em; }
+.meal-info { flex:1; margin-left:10px; }
+.meal-title { font-weight: 650; font-size:1em; letter-spacing:-0.01em; }
+.meal-desc { color: var(--text-secondary); font-size:0.85em; margin-top:3px; line-height:1.45; }
+.meal-reason {
+  color: var(--text-tertiary); font-size:0.78em; margin-top:6px;
+  display:flex; align-items:center; gap:4px;
+}
+.meal-actions { display:flex; gap:8px; margin-top:12px; }
+.badge-check {
+  display: inline-flex; align-items:center; gap:4px;
+  background: var(--green-soft); color: var(--green);
+  padding: 5px 12px; border-radius:20px;
+  font-size:0.78em; font-weight:600;
+}
+
+/* ===== Bottom Nav ===== */
+.bottom-nav {
+  position: fixed; bottom:0; left:50%; transform:translateX(-50%);
+  width:100%; max-width:480px;
+  background: rgba(20,18,32,0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+  z-index: 100;
+}
+.nav-item {
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding: 6px 0; cursor: pointer; transition: var(--transition);
+  color: var(--text-tertiary); font-size:0.7em; font-weight:600;
+  border: none; background: none;
+  letter-spacing: -0.01em;
+  font-family: inherit;
+}
+.nav-item.active { color: var(--accent); }
+.nav-item .nav-icon { font-size:1.5em; transition: var(--transition); }
+.nav-dot {
+  width:5px; height:5px; border-radius:50%;
+  background: var(--accent); opacity:0;
+  transition: var(--transition);
+}
+.nav-item.active .nav-dot { opacity:1; }
+
+/* ===== Progress ===== */
+.progress { display:flex; gap:8px; justify-content:center; margin:8px 0 2px; }
+.progress-dot {
+  width:8px; height:8px; border-radius:50%;
+  background: rgba(255,255,255,0.1);
+  transition: var(--transition);
+}
+.progress-dot.done { background: var(--green); box-shadow:0 0 8px rgba(110,231,183,0.5); }
+
+/* ===== Week View ===== */
+.week-card {
+  background: var(--bg-card); border:1px solid var(--border);
+  border-radius: var(--radius-lg); padding:20px;
+  margin-bottom:12px;
+}
+.week-title { font-size:1.1em; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.week-row {
+  display:flex; align-items:center; gap:10px; padding:10px 0;
+  border-bottom:1px solid var(--border);
+}
+.week-row:last-child { border:none; }
+.week-day-label { width:38px; font-weight:700; font-size:0.85em; }
+.week-day-date { width:42px; color: var(--text-tertiary); font-size:0.78em; }
+.week-input {
+  flex:1; background: var(--bg-input); border:1px solid var(--border);
+  color: var(--text-primary); border-radius: var(--radius-sm);
+  padding: 10px 14px; font-size:0.85em; font-family:inherit;
+  transition: var(--transition);
+}
+.week-input:focus { outline:none; border-color:var(--accent); background:rgba(196,160,255,0.05); }
+
+/* ===== Victory View ===== */
+.victory-hero { text-align:center; padding: 30px 0; }
+.victory-emoji { font-size:4em; animation: float 3s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+.victory-title { font-size:1.4em; font-weight:800; margin:12px 0 4px; }
+.victory-sub { color:var(--text-secondary); font-size:0.9em; }
+.stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:20px 0; }
+.stat-card {
+  background: var(--bg-card); border:1px solid var(--border);
+  border-radius: var(--radius-md); padding:16px; text-align:center;
+}
+.stat-value { font-size:1.5em; font-weight:800; }
+.stat-label { color:var(--text-tertiary); font-size:0.75em; margin-top:4px; }
+.insight-list { margin-top:16px; }
+.insight-item {
+  padding:12px; background: var(--bg-card); border:1px solid var(--border);
+  border-radius: var(--radius-sm); margin-bottom:8px;
+  font-size:0.88em; color: var(--text-secondary);
+}
+
+/* ===== Gap Banner ===== */
+.gap-banner {
+  background: linear-gradient(135deg, rgba(196,160,255,0.1), rgba(125,211,252,0.05));
+  border: 1px solid rgba(196,160,255,0.2);
+  border-radius: var(--radius-lg); padding:20px; text-align:center; margin-bottom:14px;
+}
+.gap-banner p { color:var(--text-secondary); line-height:1.7; font-size:0.9em; margin-bottom:12px; }
+
+/* ===== Modal ===== */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.8);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  z-index:200; display:flex; align-items:flex-end; justify-content:center;
+}
+.modal-sheet {
+  background: var(--bg-card); border:1px solid var(--border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 24px; max-width:480px; width:100%; max-height:80vh;
+  overflow-y:auto;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.modal-close {
+  float:right; background:none; border:none; color:var(--text-tertiary);
+  font-size:1.5em; cursor:pointer; padding:4px 8px;
+}
+
+/* ===== Input ===== */
+.input {
+  width:100%; background:var(--bg-input); border:1px solid var(--border);
+  color:var(--text-primary); border-radius:var(--radius-sm);
+  padding:12px 16px; font-size:0.95em; font-family:inherit;
+  transition: var(--transition);
+}
+.input:focus { outline:none; border-color:var(--accent); }
+
+/* ===== Hidden ===== */
+.hidden { display:none !important; }
+
+/* ===== Photo preview ===== */
+.photo-thumb {
+  width:60px; height:60px; border-radius:10px; object-fit:cover;
+  border: 1px solid var(--border);
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--text-tertiary); border-radius:10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="logo">Slim<span>Buddy</span></div>
+    <button id="settings-btn" style="background:none;border:none;font-size:1.2em;cursor:pointer;padding:4px 8px" onclick="openSettings()">鈿欙笍</button>
+    <div class="weather-tag" id="weather-tag">--</div>
+  </div>
+</header>
+
+<main id="main-content">
+  <!-- Views are rendered here -->
+</main>
+
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="nav-item active" data-view="today">
+    <span class="nav-icon">鈽€锔?/span> 浠婃棩
+    <span class="nav-dot"></span>
+  </button>
+  <button class="nav-item" data-view="week">
+    <span class="nav-icon">馃搮</span> 鏈懆
+    <span class="nav-dot"></span>
+  </button>
+  <button class="nav-item" data-view="victory">
+    <span class="nav-icon">馃弳</span> 鑳滃埄
+    <span class="nav-dot"></span>
+  </button>
+</nav>
+
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div class="modal-sheet" id="modal-content"></div>
+</div>
+
+<script src="db.js"></script>
+<script src="plan.js"></script>
+<script>
+// ===== State =====
+let currentView = 'today';
+let todayData = null;
+
+// ===== Init =====
+document.addEventListener('DOMContentLoaded', async () => {
+  await DB.initDB();
+  setupNav();
+  loadWeather();
+  loadToday();
+  checkGap();
+});
+
+async function loadWeather() {
+  try {
+    const r = await fetch('https://wttr.in/Wuxi?format=%C+%t&lang=zh');
+    const raw = await r.text();
+    const text = raw.replace(/<[^>]+>/g, '').trim();
+    document.getElementById('weather-tag').textContent = text || '--';
+  } catch(e) {
+    document.getElementById('weather-tag').textContent = '--';
+  }
+}
+
+function setupNav() {
+  document.querySelectorAll('#bottom-nav .nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('#bottom-nav .nav-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      currentView = item.dataset.view;
+      switchView(currentView);
+    });
+  });
+}
+
+function switchView(view) {
+  const main = document.getElementById('main-content');
+  main.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-tertiary)">鍔犺浇涓?..</div>';
+  if (view === 'today') loadToday();
+  else if (view === 'week') loadWeekView();
+  else if (view === 'victory') loadVictoryView();
+}
+
+// ===== Today View =====
+async function loadToday() {
+  const today = new Date().toISOString().slice(0, 10);
+  const weight = await DB.getLatestWeight();
+  const checkins = await DB.getTodayCheckins(today);
+  const lastCheckin = await DB.getLastCheckinDate();
+  let gapDays = null;
+  if (lastCheckin && lastCheckin !== today) {
+    const last = new Date(lastCheckin);
+    gapDays = Math.floor((new Date() - last) / 86400000);
+  }
+
+  const data = {
+    date: today,
+    weight: weight ? weight.weight_kg : null,
+    weight_id: weight ? weight.id : null,
+    checkins: checkins,
+    gap_days: gapDays,
+  };
+  todayData = data;
+
+  const w = data.weight;
+  let html = '';
+
+  if (data.gap_days && data.gap_days > 0) {
+    html += `<div class="gap-banner">
+      <p>鍢匡紒 ${data.gap_days} 澶╂病瑙佷簡<br>瀹屽叏娌″叧绯伙紝鏈€杩戞€庝箞鏍凤紵</p>
+      <button class="btn btn-sm btn-ghost" onclick="recoverGap()">鎴戝洖鏉ヤ簡锛?/button>
+    </div>`;
+  }
+
+  html += `<div class="hero">
+    <div class="weight-ring">
+      <div class="weight-value">${w ? w.toFixed(1) : '--'}<span class="weight-unit"> kg</span></div>
+      ${w ? `<div class="weight-date">涓婃锛?${data.date}</div>` : ''}
+    </div>
+    <div class="scale-actions">
+      <button class="btn btn-sm btn-ghost" onclick="scanScale()">杩炴帴绉?/button>
+      <button class="btn btn-sm btn-ghost" onclick="manualWeight()">鎵嬪姩杈撳叆</button>
+      ${w ? `<button class="btn btn-sm btn-ghost" onclick="deleteWeight(${data.weight_id})" style="color:var(--rose)">鍒犻櫎璁板綍</button>` : ''}
+    </div>
+    <div id="health-metrics" style="display:flex;justify-content:center;gap:16px;margin-top:8px;font-size:0.78em;color:var(--text-secondary)"></div>
+  </div>`;
+
+  if (data.checkins && data.checkins.length > 0) {
+    html += '<div class="progress">';
+    ['breakfast','lunch','dinner','exercise'].forEach(t => {
+      const done = data.checkins.find(c => c.meal_type === t && c.completed);
+      html += `<div class="progress-dot ${done?'done':''}"></div>`;
+    });
+    html += '</div>';
+  }
+
+  if (w) {
+    html += '<div class="section-label">浠婃棩璁″垝</div>';
+    html += '<div id="plan-area">鍔犺浇涓?..</div>';
+  } else {
+    html += '<div style="text-align:center;padding:24px 16px;color:var(--text-tertiary);font-size:0.9em">馃搵 鍏堣褰曚綋閲嶏紝鍐嶄负浣犵敓鎴愪粖鏃ヨ鍒?/div>';
+  }
+
+  document.getElementById('main-content').innerHTML = html;
+  if (w) await loadPlan();
+}
+
+async function loadPlan() {
+  const weather = document.getElementById('weather-tag').textContent;
+  const today = new Date().toISOString().slice(0, 10);
+
+  let plan = await DB.getTodayPlan(today);
+  const now = new Date();
+  if (plan && now.getHours() >= 4 && plan.plan_date < today) plan = null;
+
+  if (!plan) {
+    const latest = await DB.getLatestWeight();
+    const w = latest ? latest.weight_kg : null;
+    if (!w) { document.getElementById('plan-area').innerHTML = ''; return; }
+    const g = await PlanEngine.generateDailyPlan(today, weather, w);
+    await DB.saveTodayPlan(today,
+      JSON.stringify(g.breakfast), JSON.stringify(g.lunch),
+      JSON.stringify(g.dinner), JSON.stringify(g.exercise),
+      JSON.stringify({ motto: g.motto, schedule: g.schedule }));
+    plan = g;
+  } else {
+    plan = {
+      date: today,
+      breakfast: JSON.parse(plan.breakfast || 'null'),
+      lunch: JSON.parse(plan.lunch || 'null'),
+      dinner: JSON.parse(plan.dinner || 'null'),
+      exercise: JSON.parse(plan.exercise || 'null'),
+      extra: JSON.parse(plan.extra_notes || '{}'),
+      modified: !!plan.modified,
+    };
+  }
+
+  let mel = document.querySelector('.motto');
+  const mt = (plan.extra && plan.extra.motto) || '浣犲彲浠ョ殑銆?;
+  if (mel) mel.textContent = mt;
+  else { mel = document.createElement('div'); mel.className = 'motto'; mel.textContent = mt; document.getElementById('plan-area').parentNode.insertBefore(mel, document.getElementById('plan-area')); }
+
+  const meals = [
+    { key: 'breakfast', emoji: '馃寘', cls: 'meal-bf' },
+    { key: 'lunch', emoji: '鈽€锔?, cls: 'meal-lu' },
+    { key: 'dinner', emoji: '馃寵', cls: 'meal-di' },
+  ];
+
+  let planHtml = '';
+  meals.forEach(m => {
+    const item = plan[m.key];
+    if (!item) return;
+    const isChecked = todayData && todayData.checkins && todayData.checkins.find(c => c.meal_type === m.key && c.completed);
+    planHtml += `<div class="meal ${m.cls} ${isChecked?'done':''}">
+      <div class="meal-header">
+        <span class="meal-icon">${m.emoji}</span>
+        <div class="meal-info">
+          <div class="meal-title">${item.name || m.key}  <span style="color:var(--gold);font-size:0.8em;font-weight:400">馃敟 ${item.calories||'?'} kcal</span></div>
+          <div class="meal-desc">${item.detail || ''}</div>
+          ${item.reason ? `<div class="meal-reason">${isChecked ? '鉁?宸叉墦鍗? : '馃挕 '+item.reason}</div>` : (isChecked ? '<div class="meal-reason">鉁?宸叉墦鍗?/div>' : '')}
+        </div>
+      </div>
+      <div class="meal-actions">
+        <button class="btn btn-sm ${isChecked?'btn-ghost':'btn-green'}" onclick="openCheckin('${m.key}')">${isChecked ? '鉁?宸叉墦鍗? : '鎵撳崱'}</button>
+        <button class="btn btn-sm btn-ghost" onclick="editMeal('${m.key}')">淇敼</button>
+      </div>
+    </div>`;
+  });
+
+  const ex = plan.exercise;
+  if (ex) {
+    const exChecked = todayData && todayData.checkins && todayData.checkins.find(c => c.meal_type === 'exercise' && c.completed);
+    planHtml += `<div class="meal meal-ex ${exChecked?'done':''}">
+      <div class="meal-header">
+        <span class="meal-icon">馃弮</span>
+        <div class="meal-info">
+          <div class="meal-title">${ex.name || 'Exercise'}</div>
+          <div class="meal-desc">${ex.detail || ''}  <span style="color:var(--sky);font-size:0.85em">馃弮 娑堣€?${ex.calories_burn||0} kcal</span></div>
+          ${ex.reason ? `<div class="meal-reason">${exChecked ? '鉁?宸叉墦鍗? : '馃挕 '+ex.reason}</div>` : (exChecked ? '<div class="meal-reason">鉁?宸叉墦鍗?/div>' : '')}
+        </div>
+      </div>
+      <div class="meal-actions">
+        <button class="btn btn-sm ${exChecked?'btn-ghost':'btn-green'}" onclick="openCheckin('exercise')">${exChecked ? '鉁?宸叉墦鍗? : '鎵撳崱'}</button>
+        <button class="btn btn-sm btn-ghost" onclick="editMeal('exercise')">淇敼</button>
+      </div>
+    </div>`;
+  }
+
+  let totalCal = 0;
+  ['breakfast','lunch','dinner'].forEach(k => { if (plan[k] && plan[k].calories) totalCal += plan[k].calories; });
+  planHtml += `<div style="text-align:center;color:var(--gold);padding:8px;font-size:0.85em;font-weight:600">馃搳 浠婃棩绾?${totalCal || '?'} kcal</div>`;
+  planHtml += `<div style="text-align:center;margin-top:8px"><button class="btn btn-sm ghost" onclick="addCustomItem()">鉃?娣诲姞</button></div>`;
+  document.getElementById('plan-area').innerHTML = planHtml;
+
+  try {
+    const rd = JSON.parse(localStorage.getItem('roast')||'null');
+    if (rd && Date.now()-rd.t<10000) {
+      const mealIdx = {breakfast:0,lunch:1,dinner:2,exercise:3}[rd.type]||0;
+      const re = document.querySelectorAll('.meal-reason')[mealIdx];
+      if (re) re.textContent = '馃 '+generateRoast(rd.n, rd.c);
+      localStorage.removeItem('roast');
+    }
+  } catch(e) {}
+  loadHealthMetrics();
+}
+
+// ===== Check-in =====
+let _checkinType = null;
+let _checkinPhotos = [];
+
+function openCheckin(type) {
+  _checkinType = type;
+  _checkinPhotos = [];
+  const labels = {breakfast:'鏃╅',lunch:'鍗堥',dinner:'鏅氶',exercise:'杩愬姩'};
+  const emojis = {breakfast:'馃寘',lunch:'鈽€锔?,dinner:'馃寵',exercise:'馃弮'};
+  showModal(emojis[type]+' '+labels[type]+' 鎵撳崱', `
+    <textarea id="checkin-note" class="input" placeholder="鍐欏彞璇濓紙鍙烦杩囷級" rows="2" style="margin-bottom:12px"></textarea>
+    ${type==='exercise' ? '<input id="checkin-cal" class="input" type="number" placeholder="娑堣€楀崱璺噷 kcal" style="margin-bottom:12px">' : ''}
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-sm ghost" onclick="pickPhoto(true)">馃摲 鎷嶇収</button><button class="btn btn-sm ghost" onclick="pickPhoto(false)">馃柤锔?鐩稿唽</button>
+      <span id="photo-status" style="font-size:0.8em;color:var(--text-tertiary)"></span>
+    </div>
+    <button class="btn btn-green" style="width:100%" onclick="submitCheckin()">鉁?纭鎵撳崱</button>
+  `);
+}
+
+function pickPhoto(fromCamera) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  if (fromCamera) inp.capture = 'environment';
+  if (!fromCamera) inp.multiple = true;
+  inp.onchange = () => {
+    for (const f of inp.files) { if (_checkinPhotos.length < 9) _checkinPhotos.push(f); }
+    const st = document.getElementById('photo-status');
+    if (st) st.textContent = _checkinPhotos.length > 0 ? '馃摳 '+_checkinPhotos.length+' 寮? : '';
+  };
+  inp.click();
+}
+
+async function submitCheckin() {
+  const note = document.getElementById('checkin-note').value;
+  const calEl = document.getElementById('checkin-cal');
+  const today = new Date().toISOString().slice(0, 10);
+  const photoURLs = [];
+  for (const f of _checkinPhotos) photoURLs.push(await _fileToDataURL(f));
+  const photoPath = photoURLs.length > 0 ? JSON.stringify(photoURLs) : null;
+  closeModal();
+  await DB.saveCheckin(today, _checkinType, photoPath, note, 1);
+  if (note) await DB.saveAiMemory(`[${_checkinType}] ${note}`, 'insight');
+  loadToday();
+}
+
+function _fileToDataURL(file) {
+  return new Promise(resolve => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(file); });
+}
+
+// ===== Scale =====
+async function scanScale() {
+  if (!navigator.bluetooth) { alert('钃濈墮鍔熻兘闇€瑕佹墜鏈?Chrome 娴忚鍣╘n璇峰湪鎵嬫満涓婄敤 Chrome 鎵撳紑姝ら〉闈?); return; }
+  const UUID = '0000181b-0000-1000-8000-00805f9b34fb';
+  showModal('杩炴帴灏忕背绉?, `<p style="text-align:center;padding:16px;color:var(--text-secondary)">鍗冲皢寮瑰嚭钃濈墮璁惧閫夋嫨鍣?br><small>閫夋嫨浣犵殑灏忕背浣撹剛绉?/small></p><button class="btn btn-primary" style="width:100%" id="bluetooth-pair-btn">馃攳 寮€濮嬫悳绱?/button>`);
+  document.getElementById('bluetooth-pair-btn').onclick = async () => {
+    let device;
+    try { device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [UUID] }); }
+    catch (e) { closeModal(); if (e.name !== 'NotFoundError') alert('钃濈墮閿欒锛? + (e.message||'')); return; }
+    document.getElementById('modal-content').innerHTML = `<button class="modal-close" onclick="closeModal()">&times;</button><h3>姝ｅ湪鎼滅储 ${device.name||'灏忕背绉?}...</h3><p style="text-align:center;padding:20px;color:var(--text-secondary)">绔欎笂绉わ紝淇濇寔绔欑ǔ<br><small>绛夊緟璇绘暟绋冲畾...</small></p>`;
+    const readings = []; let scan = true;
+    try {
+      await device.gatt.connect(); await device.watchAdvertisements();
+      device.addEventListener('advertisementreceived', e => { if(!scan)return; try{const d=e.serviceData.get(UUID);if(d){const w=_psw(d);if(w)readings.push({t:Date.now(),w});}}catch(_){} });
+      await new Promise(resolve => { const dl=Date.now()+30000; const ck=setInterval(()=>{if(!scan){clearInterval(ck);resolve();return;} const l=readings.length?readings[readings.length-1].t:0; if(readings.length>0&&Date.now()-l>2500){clearInterval(ck);resolve();} if(Date.now()>dl){clearInterval(ck);resolve();} },600); });
+      scan=false; await device.gatt.disconnect();
+    } catch(e) { scan=false; closeModal(); alert('杩炴帴澶辫触锛?+(e.message||'')); return; }
+    closeModal(); if(!readings.length){alert('鏈娴嬪埌璇绘暟');return;}
+    const r=readings.slice(-5).map(x=>x.w).sort((a,b)=>a-b); const w=r[Math.floor(r.length/2)];
+    await DB.saveWeight(w,'scale'); const t=new Date().toISOString().slice(0,10); const p=await DB.getTodayPlan(t); if(p)await DB.saveTodayPlan(t,null,null,null,null,'');
+    loadToday();
+  };
+}
+function _psw(d){if(d.byteLength<10)return null;const r=d.getUint16(d.byteLength-2,true);const w=r*0.005;return(w>20&&w<250)?Math.round(w*10)/10:null;}
+
+async function manualWeight() {
+  const w = prompt('杈撳叆浣撻噸锛坘g锛夛細'); if (!w) return;
+  const kg = parseFloat(w); if (isNaN(kg) || kg < 30 || kg > 200) return;
+  await DB.saveWeight(kg, 'manual'); const t = new Date().toISOString().slice(0,10);
+  const p = await DB.getTodayPlan(t); if (p) await DB.saveTodayPlan(t, null, null, null, null, '');
+  loadToday();
+}
+
+async function deleteWeight(id) {
+  if (!confirm('纭畾鍒犻櫎杩欐潯浣撻噸璁板綍鍚楋紵')) return;
+  await DB.deleteWeight(id); loadToday();
+}
+
+// ===== Edit =====
+let _editType = null;
+
+async function editMeal(type) {
+  _editType = type;
+  const labels = {breakfast:'鏃╅',lunch:'鍗堥',dinner:'鏅氶',exercise:'杩愬姩'};
+  const today = new Date().toISOString().slice(0, 10);
+  const plan = await DB.getTodayPlan(today);
+  let cn='', cd='', cc='';
+  if (plan) { try { const d=JSON.parse(plan[type]||'{}'); cn=(d.name||'').replace(/"/g,'&quot;'); cd=(d.detail||'').replace(/"/g,'&quot;'); cc=d.calories||d.calories_burn||''; } catch(_) {} }
+  showModal('淇敼 '+labels[type], `
+    <input id="edit-name" class="input" placeholder="鍚嶇О" value="${cn}" style="margin-bottom:8px">
+    <input id="edit-detail" class="input" placeholder="璇︽儏" value="${cd}" style="margin-bottom:8px">
+    <input id="edit-cal" class="input" type="number" placeholder="鐑噺 kcal" value="${cc}" style="margin-bottom:8px">
+    <button class="btn btn-primary" style="width:100%" onclick="submitEdit()">淇濆瓨淇敼</button>
+  `);
+}
+
+async function submitEdit() {
+  const name = document.getElementById('edit-name').value;
+  const detail = document.getElementById('edit-detail').value;
+  const calEl = document.getElementById('edit-cal');
+  const today = new Date().toISOString().slice(0, 10);
+  const plan = await DB.getTodayPlan(today); if (!plan) { closeModal(); return; }
+  const bf = JSON.parse(plan.breakfast || '{}'); const lu = JSON.parse(plan.lunch || '{}');
+  const di = JSON.parse(plan.dinner || '{}'); const ex = JSON.parse(plan.exercise || '{}');
+  const tgt = {breakfast:bf,lunch:lu,dinner:di,exercise:ex}[_editType]||{};
+  if (name) tgt.name = name; if (detail) tgt.detail = detail;
+  if (calEl) { const v=parseInt(calEl.value)||0; tgt.calories = v; tgt.calories_burn = v; }
+  const rn = name || '杩欎釜'; const rc = calEl ? calEl.value : '';
+  if (calEl && rc) localStorage.setItem('roast', JSON.stringify({n:rn,c:rc,t:Date.now(),type:_editType}));
+  await DB.saveTodayPlan(today, JSON.stringify(bf), JSON.stringify(lu), JSON.stringify(di), JSON.stringify(ex), plan.extra_notes);
+  closeModal(); loadPlan();
+}
+
+// ===== Week View =====
+async function loadWeekView() {
+  const ws = PlanEngine.getWeekMonday();
+  const days = PlanEngine.generateWeeklyPrompts();
+  const schedules = await DB.getWeekSchedule(ws);
+  const sm = {}; schedules.forEach(s => { sm[s.schedule_date] = s.plan_notes || ''; });
+  days.forEach(d => { d.notes = sm[d.date] || ''; });
+  let html = '<div class="week-card"><div class="week-title">馃搮 鏈懆瀹夋帓</div>';
+  days.forEach((d, i) => {
+    html += `<div class="week-row"><span class="week-day-label">${d.day}</span><span class="week-day-date">${d.date_display}</span><input class="week-input" placeholder="鏈変粈涔堝畨鎺掞紵" value="${(d.notes||'').replace(/"/g,'&quot;')}" data-day="${d.date}" data-idx="${i}"></div>`;
+  });
+  html += '<button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="saveWeek()">淇濆瓨鏈懆</button></div>';
+  document.getElementById('main-content').innerHTML = html;
+}
+
+async function saveWeek() {
+  const ws = PlanEngine.getWeekMonday();
+  for (const inp of document.querySelectorAll('.week-input'))
+    await DB.saveWeekSchedule(ws, parseInt(inp.dataset.idx), inp.dataset.day, inp.value);
+  alert('宸蹭繚瀛橈紒');
+}
+
+// ===== Victory View =====
+async function loadVictoryView() {
+  const ws = PlanEngine.getWeekMonday();
+  const stats = await DB.getWeekStats(ws);
+  const mems = await DB.getAiMemories(7);
+  const profile = await DB.getUserProfile();
+  const latest = await DB.getLatestWeight();
+
+  const s = stats;
+  let emoji='馃帀', title='鏈懆鑳滃埄锛?, sub='鍙堢啲杩囦簡涓€鍛紝涓嶅鏄?;
+  if (s.weight_change && s.weight_change < -0.5) { emoji='馃弳'; title='瓒呮鐨勪竴鍛紒'; sub='浣撻噸鍦ㄥ線涓嬭蛋锛?; }
+  else if (s.active_days >= 5) { emoji='馃専'; title='绋冲畾鐨勪竴鍛紒'; sub='浣犲嚑涔庢瘡澶╅兘鍦?; }
+  else if (s.active_days >= 2) { emoji='馃挭'; title='浣犳潵浜嗭紒'; sub='姣忎竴娆℃墦鍗￠兘绠楁暟'; }
+
+  let html = `<div class="victory-hero"><div class="victory-emoji">${emoji}</div><div class="victory-title">${title}</div><div class="victory-sub">${sub}</div><button class="btn btn-sm ghost" style="margin-top:12px" onclick="exportReport()">馃搫 瀵煎嚭鏃ユ姤</button></div>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-value">${s.active_days}/7</div><div class="stat-label">娲昏穬澶╂暟</div></div>
+    <div class="stat-card"><div class="stat-value">${s.total_checkins}</div><div class="stat-label">鎵撳崱娆℃暟</div></div>
+    <div class="stat-card"><div class="stat-value">${latest ? latest.weight_kg.toFixed(1) : '--'}</div><div class="stat-label">褰撳墠浣撻噸</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:${s.weight_change&&s.weight_change<0?'var(--green)':'var(--rose)'}">${s.weight_change?(s.weight_change>0?'+':'')+s.weight_change.toFixed(1):'--'}</div><div class="stat-label">浣撻噸鍙樺寲</div></div>
+  </div>`;
+
+  const badges = [];
+  if (s.active_days>=1) badges.push({e:'鉁?,t:'寮€濮嬪暒',d:'鍑忚剛涔嬫梾绗竴姝ワ紒'});
+  if (s.active_days>=7) badges.push({e:'馃憫',t:'鍏ㄥ嫟鍛?,d:'鏈懆姣忓ぉ閮芥墦鍗′簡锛?});
+  else if (s.active_days>=5) badges.push({e:'猸?,t:'鍧氭寔鍛?,d:'鏈懆鎵撳崱5澶╀互涓?});
+  else if (s.active_days>=3) badges.push({e:'馃尡',t:'璧锋鍛?,d:'鏈懆鎵撳崱3澶?});
+  if (s.weight_change&&s.weight_change<-0.3) badges.push({e:'馃搲',t:'浣撻噸涓嬮檷',d:'杩欏懆浣撻噸鍦ㄥ線涓嬭蛋'});
+  if (s.total_checkins>=10) badges.push({e:'馃敟',t:'鎵撳崱杈句汉',d:'鏈懆鎵撳崱瓒呰繃10娆?});
+  if (mems&&mems.length>=3) badges.push({e:'馃',t:'娲炲療婊℃弧',d:'绉疮浜嗗緢澶氳嚜鎴戝彂鐜?});
+  if (!badges.length) badges.push({e:'馃晲',t:'绛夊緟鎵撳崱',d:'寮€濮嬫墦鍗″悗瑙ｉ攣鎴愬氨'});
+
+  html += '<div class="section-label" style="margin-top:16px">馃弲 鏈懆鎴愬氨</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">';
+  badges.forEach(b => { html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:10px 14px;text-align:center;min-width:80px"><div style="font-size:1.5em">${b.e}</div><div style="font-size:0.75em;font-weight:700">${b.t}</div><div style="font-size:0.65em;color:var(--text-tertiary)">${b.d}</div></div>`; });
+  html += '</div>';
+
+  if (mems && mems.length > 0) {
+    html += '<div class="insight-list" style="margin-top:16px"><div class="section-label">鏈懆娲炲療</div>';
+    mems.forEach(m => { html += `<div class="insight-item">${m.content}</div>`; });
+    html += '</div>';
+  }
+
+  const history = await DB.getCheckinHistory(7);
+  if (history.length > 0) {
+    const lb={breakfast:'鏃╅',lunch:'鍗堥',dinner:'鏅氶',exercise:'杩愬姩'};
+    const eb={breakfast:'馃寘',lunch:'鈽€锔?,dinner:'馃寵',exercise:'馃弮'};
+    html += '<div class="section-label" style="margin-top:16px">馃搵 鏈€杩戞墦鍗?/div>';
+    history.forEach(it => {
+      html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px"><span>${eb[it.meal_type]}</span><div style="flex:1"><div style="font-weight:600;font-size:0.85em">${lb[it.meal_type]}</div><div style="color:var(--text-secondary);font-size:0.78em">${it.checkin_date}</div></div>`;
+      if (it.note) html += `<div style="color:var(--text-tertiary);font-size:0.75em;max-width:120px;text-align:right">${it.note}</div>`;
+      if (it.photo_path) { try { JSON.parse(it.photo_path).forEach(pp => { html += `<img src="${pp}" class="photo-thumb">`; }); } catch(e) { html += `<img src="${it.photo_path}" class="photo-thumb">`; } }
+      html += '</div>';
+    });
+  }
+  document.getElementById('main-content').innerHTML = html;
+}
+
+// ===== Health & Settings =====
+async function loadHealthMetrics() {
+  const el = document.getElementById('health-metrics'); if (!el) return;
+  try {
+    const profile = await DB.getUserProfile();
+    if (profile) {
+      const latest = await DB.getLatestWeight(); const w = latest ? latest.weight_kg : null;
+      const bmi = Health.calcBMI(w, profile.height_cm); const bmr = Health.calcBMR(w, profile.height_cm, profile.age);
+      const target = Health.calcTargetCalories(Health.calcTDEE(bmr, profile.activity_level));
+      let h = '';
+      if (bmi) h += `<span>BMI ${bmi} (${Health.bmiLabel(bmi)})</span>`;
+      if (target) h += `<span>馃幆 ${target} kcal/澶?/span>`;
+      el.innerHTML = h;
+    }
+  } catch(e) {}
+}
+
+async function openSettings() {
+  let html = '<div style="text-align:center;padding:10px 0" id="settings-stats"></div>';
+  html += '<input id="set-height" class="input" type="number" placeholder="韬珮 cm" style="margin-bottom:8px">';
+  html += '<input id="set-age" class="input" type="number" placeholder="骞撮緞" style="margin-bottom:8px">';
+  html += '<select id="set-activity" class="input" style="margin-bottom:8px"><option value="sedentary">涔呭潗</option><option value="light" selected>杞诲害娲诲姩</option><option value="moderate">涓害娲诲姩</option><option value="active">楂樺害娲诲姩</option></select>';
+  html += '<input id="set-allergies" class="input" placeholder="杩囨晱鍘? style="margin-bottom:8px">';
+  html += '<input id="set-conditions" class="input" placeholder="鎱㈡€х梾" style="margin-bottom:8px">';
+  html += '<input id="set-meds" class="input" placeholder="鏈嶈嵂鎯呭喌" style="margin-bottom:12px">';
+  html += '<button class="btn btn-primary" style="width:100%" onclick="saveSettings()">淇濆瓨璁剧疆</button>';
+  showModal('鈿欙笍 璁剧疆', html);
+  try {
+    const profile = await DB.getUserProfile();
+    if (profile) {
+      document.getElementById('set-height').value = profile.height_cm || '';
+      document.getElementById('set-age').value = profile.age || '';
+      document.getElementById('set-activity').value = profile.activity_level || 'light';
+      document.getElementById('set-allergies').value = profile.allergies || '';
+      document.getElementById('set-conditions').value = profile.conditions || '';
+      document.getElementById('set-meds').value = profile.medications || '';
+      const latest = await DB.getLatestWeight(); const w = latest ? latest.weight_kg : null;
+      const bmi = Health.calcBMI(w, profile.height_cm); const bmr = Health.calcBMR(w, profile.height_cm, profile.age);
+      const tdee = Health.calcTDEE(bmr, profile.activity_level); const target = Health.calcTargetCalories(tdee);
+      let s = ''; if (bmi) s += `BMI ${bmi} 路 ${Health.bmiLabel(bmi)}<br>`;
+      if (bmr) s += `鍩虹浠ｈ阿 ${bmr} kcal 路 鏃ユ秷鑰?${tdee} kcal<br>`;
+      if (target) s += `馃幆 鍑忚剛鐩爣 ${target} kcal/澶ー;
+      document.getElementById('settings-stats').innerHTML = '<div style="color:var(--accent);font-size:0.9em">'+s+'</div>';
+    }
+  } catch(e) {}
+}
+
+async function saveSettings() {
+  await DB.updateUserProfile({
+    height_cm: parseFloat(document.getElementById('set-height').value) || 171,
+    age: parseInt(document.getElementById('set-age').value) || 22,
+    activity_level: document.getElementById('set-activity').value,
+    allergies: document.getElementById('set-allergies').value,
+    conditions: document.getElementById('set-conditions').value,
+    medications: document.getElementById('set-meds').value,
+  });
+  closeModal(); loadToday();
+}
+
+// ===== Custom Items =====
+function addCustomItem() {
+  showModal('娣诲姞璁″垝', `<button class="btn btn-ghost" style="width:100%;margin-bottom:8px" onclick="addCustom('meal')">馃嵔锔?娣诲姞楗</button><button class="btn btn-ghost" style="width:100%" onclick="addCustom('exercise')">馃弮 娣诲姞杩愬姩</button>`);
+}
+
+async function addCustom(type) {
+  closeModal();
+  const labels={meal:'楗',exercise:'杩愬姩'};
+  const name=prompt(labels[type]+'鍚嶇О锛?); if(!name) return;
+  const detail=prompt(labels[type]+'璇︽儏锛堝彲璺宠繃锛夛細')||'';
+  const cal=type==='meal'?(prompt('鐑噺 kcal锛堝彲璺宠繃锛夛細')||'0'):'0';
+  const today=new Date().toISOString().slice(0,10);
+  const plan=await DB.getTodayPlan(today);
+  if(plan){
+    const f=type==='meal'?'breakfast':'exercise';
+    const tgt=JSON.parse(plan[f]||'{}'); tgt.name=name; tgt.detail=detail;
+    if(type==='meal') tgt.calories=parseInt(cal)||0; else tgt.calories_burn=parseInt(cal)||0;
+    await DB.saveTodayPlan(today,type==='meal'?JSON.stringify(tgt):plan.breakfast,plan.lunch,plan.dinner,type==='exercise'?JSON.stringify(tgt):plan.exercise,plan.extra_notes);
+    loadPlan();
+  }
+}
+
+// ===== Gap =====
+async function checkGap() { /* handled in loadToday */ }
+
+async function recoverGap() {
+  const note = prompt('杩欏嚑澶╂€庝箞鏍凤紵闅忎究璇磋灏卞ソ :)');
+  if (note) await DB.saveBodyState(new Date().toISOString().slice(0,10), null, null, note, null);
+  loadToday();
+}
+
+// ===== Modal =====
+function showModal(title, content) {
+  document.getElementById('modal-content').innerHTML = `<button class="modal-close" onclick="closeModal()">&times;</button><h3 style="margin-bottom:12px">${title}</h3>${content}`;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+
+// ===== Export =====
+function exportReport() {
+  const days = prompt('瀵煎嚭鏈€杩戝嚑澶╋紵', '7'); if (!days) return;
+  fetch('/api/export?days='+days).then(r=>{if(r.ok)r.blob().then(b=>{const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='SlimBuddy_Report.docx';a.click();});else throw new Error('no');}).catch(()=>alert('瀵煎嚭闇€瑕佸悗绔敮鎸乗n鏈湴杩愯 python app.py 鍗冲彲'));
+}
+
+// ===== AI Roast =====
+function generateRoast(name, calories) {
+  const cal = parseInt(calories) || 0;
+  let pool;
+  if (cal <= 150) pool = [`"${name}"鎵?{cal}kcal锛屼綘鏄ぉ浣垮惂 馃槆`,`${cal}kcal锛岃繖涔堟竻娣★紝韬綋浼氳阿璋綘鐨?馃尶`,`"${name}"锛?{cal}kcal銆備箹锛屽氨鏄杩欐牱 馃憦`,`${cal}kcal锛屽噺鑴傛ā鑼冪敓鏈汉浜?猸恅,`灏?{cal}kcal锛熺粰浣犳瘮涓績 馃挌`];
+  else if (cal <= 500) pool = [`"${name}"${cal}kcal锛屾甯稿彂鎸ワ紝娌℃瘺鐥?馃檪`,`${cal}kcal锛屼笉澶氫笉灏戝垰鍒氬ソ 馃憣`,`"${name}"锛?{cal}kcal銆傚悆寰楀紑蹇冩渶閲嶈~`,`${cal}kcal锛岀ǔ浣忥紝鎴戜滑鑳借耽 鉁奰];
+  else pool = [`"${name}"鈥︹€?{cal}kcal锛屼粖澶╂兂鏀剧旱涓€涓嬪鍚?馃槒`,`${cal}kcal鐨?${name}"锛屽ソ鍚冨鍚э紵鎴戞噦鎴戞噦 馃い`,`${cal}kcal锛佹槑澶╄寰楀璧颁袱姝ュ摝 馃毝`,`"${name}"锛?{cal}kcal銆傛病鍏崇郴锛屼竴椤块キ姣佷笉鎺変綘 馃挍`,`${cal}kcal锛岃涓嬫潵浜唦 涓嶈瘎鍒わ紝鍙槸闄綘鐪嬬潃 馃`];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ===== PWA =====
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
+</script>
+</body>
+</html>

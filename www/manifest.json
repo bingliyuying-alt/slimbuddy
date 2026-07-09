@@ -1,0 +1,28 @@
+{
+  "name": "SlimBuddy",
+  "short_name": "SlimBuddy",
+  "description": "减脂搭子 · 温柔陪伴不评判",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#0f0f1a",
+  "theme_color": "#c4a0ff",
+  "orientation": "portrait-primary",
+  "lang": "zh-CN",
+  "categories": ["health", "lifestyle"],
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

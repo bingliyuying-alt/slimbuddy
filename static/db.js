@@ -68,8 +68,8 @@ const DB = (() => {
       const rec = { weight_kg: weightKg, source, body_fat_pct: bodyFatPct, notes,
         recorded_at: new Date().toISOString() };
       const req = store.add(rec);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      tx.oncomplete = () => resolve(req.result);
+      tx.onerror = () => reject(tx.error);
     });
   }
 
