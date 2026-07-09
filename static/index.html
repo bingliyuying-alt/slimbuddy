@@ -420,6 +420,7 @@ async function loadToday() {
     <div class="scale-actions">
       <button class="btn btn-sm btn-ghost" onclick="scanScale()">连接秤</button>
       <button class="btn btn-sm btn-ghost" onclick="manualWeight()">手动输入</button>
+      ${w ? `<button class="btn btn-sm btn-ghost" onclick="deleteWeight(${data.weight_id})" style="color:var(--rose)">删除记录</button>` : ''}
     </div>
     <div id="health-metrics" style="display:flex;justify-content:center;gap:16px;margin-top:8px;font-size:0.78em;color:var(--text-secondary)"></div>
   </div>`;
@@ -435,13 +436,17 @@ async function loadToday() {
   }
 
   // Plan section
-  html += '<div class="section-label">今日计划</div>';
-  html += '<div id="plan-area">加载中...</div>';
+  if (w) {
+    html += '<div class="section-label">今日计划</div>';
+    html += '<div id="plan-area">加载中...</div>';
+  } else {
+    html += '<div style="text-align:center;padding:24px 16px;color:var(--text-tertiary);font-size:0.9em">📋 先记录体重，再为你生成今日计划</div>';
+  }
 
   document.getElementById('main-content').innerHTML = html;
 
   // Load plan
-  await loadPlan();
+  if (w) await loadPlan();
 }
 
 async function loadPlan() {
@@ -452,6 +457,12 @@ async function loadPlan() {
     plan = await r.json();
   } catch(e) {
     document.getElementById('plan-area').innerHTML = '<p style="color:var(--text-tertiary);text-align:center">无法加载计划</p>';
+    return;
+  }
+
+  // No weight yet — skip plan rendering
+  if (plan.no_weight) {
+    document.getElementById('plan-area').innerHTML = '';
     return;
   }
 
@@ -606,6 +617,12 @@ function manualWeight() {
     headers:{'Content-Type':'application/x-www-form-urlencoded'},
     body:'weight='+kg
   }).then(() => loadToday());
+}
+
+async function deleteWeight(id) {
+  if (!confirm('确定删除这条体重记录吗？')) return;
+  await fetch(API + '/api/weight/' + id, { method:'DELETE' });
+  loadToday();
 }
 
 // ===== Edit =====

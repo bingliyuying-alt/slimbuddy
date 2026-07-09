@@ -93,7 +93,7 @@ def init_db():
 def get_latest_weight():
     conn = get_db()
     row = conn.execute(
-        "SELECT weight_kg, recorded_at FROM weight_records ORDER BY recorded_at DESC LIMIT 1"
+        "SELECT id, weight_kg, recorded_at FROM weight_records ORDER BY recorded_at DESC LIMIT 1"
     ).fetchone()
     conn.close()
     return dict(row) if row else None
@@ -119,6 +119,12 @@ def get_weight_trend(days=30):
         (f"-{days} days",)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+def delete_weight(weight_id):
+    conn = get_db()
+    conn.execute("DELETE FROM weight_records WHERE id=?", (weight_id,))
+    conn.commit()
+    conn.close()
 
 def get_today_plan(today):
     conn = get_db()

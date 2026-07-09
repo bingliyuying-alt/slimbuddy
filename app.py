@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from slim.database import (
-    init_db, get_latest_weight, save_weight, get_weight_trend,
+    init_db, get_latest_weight, save_weight, delete_weight, get_weight_trend,
     get_today_plan, save_today_plan, get_week_schedule, save_week_schedule,
     get_today_checkins, save_checkin, get_last_checkin_date,
     get_week_stats, save_body_state, get_ai_memories, save_ai_memory,
@@ -56,6 +56,7 @@ async def api_today():
     return {
         "date": today, "weekday": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][date.today().weekday()],
         "weight": weight["weight_kg"] if weight else None,
+        "weight_id": weight["id"] if weight else None,
         "plan": plan, "checkins": checkins,
         "checkin_complete": len([c for c in checkins if c["completed"]]) >= 3,
         "gap_days": gap_days,
@@ -68,6 +69,14 @@ async def api_weight_trend(days: int = 30):
 @app.post("/api/weight")
 async def api_save_weight(weight: float = Form(...), notes: str = Form("")):
     save_weight(weight, source="manual", notes=notes)
+    conn = get_db()
+    conn.execute("DELETE FROM daily_plans WHERE plan_date=date('now','localtime')")
+    conn.commit(); conn.close()
+    return {"ok": True}
+
+@app.delete("/api/weight/{weight_id}")
+async def api_delete_weight(weight_id: int):
+    delete_weight(weight_id)
     conn = get_db()
     conn.execute("DELETE FROM daily_plans WHERE plan_date=date('now','localtime')")
     conn.commit(); conn.close()
@@ -102,6 +111,8 @@ async def api_get_plan(weather: str = None):
     if plan is None:
         latest = get_latest_weight()
         w = latest["weight_kg"] if latest else None
+        if w is None:
+            return {"date": today, "no_weight": True}
         g = generate_daily_plan(today, weather=weather, weight_kg=w)
         save_today_plan(today,
             json.dumps(g["breakfast"],ensure_ascii=False),
